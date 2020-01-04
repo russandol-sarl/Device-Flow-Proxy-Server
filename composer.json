@@ -3,8 +3,8 @@
     "php": "^7.2.0",
     "league/route": "~1.2",
     "league/plates": "~3.1",
-    "predis/predis": "^1.1",
-    "vlucas/phpdotenv": "^3.6"
+    "vlucas/phpdotenv": "^3.6",
+    "mongodb/mongodb": "^1.5"
   },
   "require-dev": {
     "phpunit/phpunit": "*"

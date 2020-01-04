@@ -17,6 +17,7 @@ $router->addRoute('GET', '/auth/redirect', 'Controller::redirect');
 # Device API
 $router->addRoute('POST', '/device/code', 'Controller::generate_code');
 $router->addRoute('POST', '/device/token', 'Controller::access_token');
+$router->addRoute('POST', '/device/proxy', 'Controller::proxy');
 
 $dispatcher = $router->getDispatcher();
 $request = Request::createFromGlobals();

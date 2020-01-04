@@ -1,4 +1,4 @@
 <?php $this->layout('layout', ['title' => $title]); ?>
 
-<h1>OAuth 2.0 Device Flow</h1>
-<p>This is a server that is used to sign in to OAuth services from devices like an Apple TV. You'll need to start the process from the device.</p>
+<h1>Obtention de consentement pour DomoticzLinky</h1>
+<p>Ce site sert de passerelle pour l'obtention du consentement de partage de données du site d'Enedis vers le plugin DomoticzLinky de Domoticz.</p>

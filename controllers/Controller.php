@@ -36,7 +36,7 @@ class Controller {
   # Home Page
   public function index(Request $request, Response $response) {
     $response->setContent(view('index', [
-      'title' => 'Device Flow Proxy Server'
+      'title' => 'Device Flow Proxy Server pour DomoticzLinky'
     ]));
     return $response;
   }
@@ -107,26 +107,28 @@ class Controller {
       return $this->html_error($response, 'invalid_request', 'Code not found');
     }
 
-    $state = bin2hex(random_bytes(16));
+    $state = bin2hex(random_bytes(16)) . '1';
     Cache::set('state:'.$state, [
       'user_code' => $user_code,
       'timestamp' => time(),
     ], 300);
-
-    $pkce_challenge = base64_urlencode(hash('sha256', $cache->pkce_verifier, true));
 
     // TODO: might need to make this configurable to support OAuth servers that have
     // custom parameters for the auth endpoint
     $query = [
       'response_type' => 'code',
       'client_id' => $cache->client_id,
-      'redirect_uri' => getenv('BASE_URL') . '/auth/redirect',
+      'redirect_uri' => getenv('REDIRECT_URI'),
       'state' => $state,
-      'code_challenge' => $pkce_challenge,
-      'code_challenge_method' => 'S256',
+      'duration' => getenv('DURATION'),
     ];
     if($cache->scope)
       $query['scope'] = $cache->scope;
+    if(getenv('PKCE')) {
+      $pkce_challenge = base64_urlencode(hash('sha256', $cache->pkce_verifier, true));
+      $query['code_challenge'] = $pkce_challenge;
+      $query['code_challenge_method'] = 'S256';
+    }
 
     $authURL = getenv('AUTHORIZATION_ENDPOINT') . '?' . http_build_query($query);
 
@@ -160,12 +162,18 @@ class Controller {
     $params = [
       'grant_type' => 'authorization_code',
       'code' => $request->get('code'),
-      'redirect_uri' => getenv('BASE_URL') . '/auth/redirect',
+      'redirect_uri' => getenv('REDIRECT_URI'),
       'client_id' => $cache->client_id,
-      'code_verifier' => $cache->pkce_verifier,
     ];
-    if($cache->client_secret) {
+    $envSecret = getenv('CLIENT_SECRET');
+    if($envSecret) {
+      $params['client_secret'] = $envSecret;
+    }
+    elseif($cache->client_secret) {
       $params['client_secret'] = $cache->client_secret;
+    }
+    if(getenv('PKCE')) {
+      $params['code_verifier'] = $cache->pkce_verifier;
     }
 
     $ch = curl_init();
@@ -182,6 +190,20 @@ class Controller {
       Cache::delete($cache->device_code);
       return $this->html_error($response, 'Error Logging In', 'There was an error getting an access token from the service <p><pre>'.$token_response.'</pre></p>');
     }
+    
+    // pass other parameters as json attributes
+    foreach ($request->request as $key => $value) {
+      if (($key != "state") and ($key != 'code')) {
+        $access_token->$key = $value;
+      }
+    }
+    foreach ($request->query as $key => $value) {
+      if (($key != "state") and ($key != 'code')) {
+        $access_token->$key = $value;
+      }
+    }
+    //if ($request->get('usage_point_id') != false) {
+    //}
 
     # Stash the access token in the cache and display a success message
     Cache::set($cache->device_code, [
@@ -191,8 +213,60 @@ class Controller {
     Cache::delete($state->user_code);
 
     $response->setContent(view('signed-in', [
-      'title' => 'Signed In'
+      'title' => 'Consentement obtenu'
     ]));
+    return $response;
+  }
+
+  private static $headers;
+  
+  public function resetHeaders() {
+    self::$headers = [];
+  }
+  
+  public function setHeader($curl, $header) {
+    $len = strlen($header);
+    $header = explode(':', $header, 2);
+    if (count($header) < 2) // ignore invalid headers
+      return $len;
+
+    self::$headers[strtolower(trim($header[0]))][] = trim($header[1]);
+
+    return $len;
+  }
+  
+  # Proxy to TOKEN_ENDPOINT
+  public function proxy(Request $request, Response $response) {
+    $params = $request->request->all();
+  
+    $envSecret = getenv('CLIENT_SECRET');
+    if($envSecret) {
+      $params['client_secret'] = $envSecret;
+    }
+    
+    $query = [
+      'redirect_uri' => getenv('REDIRECT_URI'),
+    ];
+    
+    $tokenURL = getenv('TOKEN_ENDPOINT') . '?' . http_build_query($query);
+    
+    self::resetHeaders();
+
+    $ch = curl_init();
+    curl_setopt($ch, CURLOPT_URL, $tokenURL);
+    curl_setopt($ch, CURLOPT_POST, true);
+    curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($params));
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    // this function is called by curl for each header received
+    curl_setopt($ch, CURLOPT_HEADERFUNCTION, "Controller::setHeader");
+
+    $token_response = curl_exec($ch);
+    
+    if (array_key_exists('content-type', self::$headers)) {
+      $response->headers->set('content-type', self::$headers['content-type']);
+    }
+    
+    $response->setContent($token_response);
     return $response;
   }
 
@@ -230,7 +304,7 @@ class Controller {
 
     # Check if the device code is in the cache
     $data = Cache::get($device_code);
-
+    
     if(!$data) {
       return $this->error($response, 'invalid_grant');
     }

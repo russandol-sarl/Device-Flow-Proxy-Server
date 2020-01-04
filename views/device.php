@@ -1,12 +1,12 @@
-<?php $this->layout('layout', ['title' => 'Enter Device Code']); ?>
+<?php $this->layout('layout', ['title' => 'Entrez le code']); ?>
 
 <?php if($code): ?>
-<p>Confirm the code below matches the code shown on the device.</p>
+<p>Veuillez confirmer que le code ci-dessous correspond au code donnée dans les logs de Domoticz par le plugin DomoticzLinky.</p>
 <?php else: ?>
-<p>Enter the code shown on your device to continue.</p>
+<p>Entrez le code obtenu dans les logs de Domoticz ci-dessous pour continuer.</p>
 <?php endif ?>
 
-<form action="/auth/verify_code" method="get">
+<form action="https://opensrcdev.alwaysdata.net/domoticzlinkyconnect/auth/verify_code" method="get">
   <input type="text" name="code" placeholder="XXXX-XXXX" id="user_code" value="<?= $code ?>" autocomplete="off">
   <input type="submit">
 </form>

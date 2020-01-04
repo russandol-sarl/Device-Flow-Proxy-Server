@@ -21,11 +21,9 @@ if(!$complete) {
   die(1);
 }
 
-if(getenv('REDIS_URL')) {
-  $result = Cache::connect(getenv('REDIS_URL'));
-  var_dump($result);
+if(getenv('MONGODB_DB')) {
+  $result = Cache::connect();
 }
-
 
 function view($template, $data=[]) {
   global $templates;
@@ -45,50 +43,87 @@ function random_alpha_string($len) {
 }
 
 class Cache {
-  private static $redis;
+  private static $mongo;
+  private static $col;
 
-  public static function connect($host=false) {
-    if(!isset(self::$redis)) {
-      if($host) {
-        self::$redis = new Predis\Client($host);
-      } else {
-        self::$redis = new Predis\Client();
+  public static function connect($host=false,$dbname=false) {
+    if(!isset(self::$mongo)) {
+      if (!$dbname) {
+        $dbname = getenv('MONGODB_DB');
       }
+      if (!$host) {
+        $host = 'mongodb://' . rawurlencode(getenv('MONGODB_USER')) . ':' . rawurlencode(getenv('MONGODB_PASSWORD')) . '@' . getenv('MONGODB_ADDRESS') . ':' . getenv('MONGODB_PORT');
+      }
+      self::$mongo = new MongoDB\Client($host.'/'.$dbname);
+      self::$col = self::$mongo->selectCollection($dbname, "cache");
+      self::$col->createIndex([ "expireAt" => 1 ], [ "expireAfterSeconds" => 0 ]);
+    }
+  }
+  
+  public static function dump() {
+    $obj = self::$col->findOne();
+    $cursor = self::$col->find();
+    foreach ($cursor as $doc) {
+      var_dump($doc);
     }
   }
 
+  public static function convertToExpireAt($exp) {
+    return new \MongoDB\BSON\UTCDateTime(round(microtime(true) * 1000) + ($exp * 1000));
+  }
+  
   public static function set($key, $value, $exp=600) {
     self::connect();
-    self::$redis->setex($key, $exp, json_encode($value));
+    self::$col->updateMany(
+      [ 'key' => $key ],
+      [ '$set' => 
+        [ 'expireAt' => self::convertToExpireAt($exp),
+          'value' => $value
+        ]
+      ],
+      [ 'upsert' => true ]
+    );
   }
 
   public static function get($key) {
     self::connect();
-    $data = self::$redis->get($key);
-    if($data) {
-      return json_decode($data);
-    } else {
+    $doc = self::$col->findOne([ "key" => $key ]);
+    if ($doc) {
+      return $doc->value;
+    }
+    else {
       return null;
     }
   }
 
   public static function add($key, $value, $exp=600) {
     self::connect();
-    self::$redis->setex($key, $exp, json_encode($value));
+    self::set($key, $value, $exp);
   }
 
   public static function expire($key, $exp) {
     self::connect();
-    self::$redis->expire($key, $exp);
+    self::$col->updateMany(
+      [ 'key' => $key ],
+      [ '$set' =>
+        [ 'expireAt' => self::convertToExpireAt($exp) ]
+      ]
+    );
   }
 
   public static function incr($key, $value=1) {
     self::connect();
-    self::$redis->incrby($key, $value);
+
+    self::$col->updateMany(
+      [ 'key' => $key ],
+      [ '$inc' =>
+        [ 'value' => $value ]
+      ]
+    );
   }
 
   public static function delete($key) {
     self::connect();
-    self::$redis->del($key);
+    self::$col->deleteMany([ 'key' => $key ]);
   }
 }

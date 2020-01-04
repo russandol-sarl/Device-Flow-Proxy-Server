@@ -1,9 +1,9 @@
-OAuth 2.0 Device Flow Proxy Server
-==================================
+OAuth 2.0 Device Flow Proxy Server for Enedis
+=============================================
 
-A demonstration of the OAuth 2.0 Device Code flow for devices without a browser or with limited keyboard entry.
+An OAuth 2.0 Device Code flow for [DomoticzLinky](https://github.com/guillaumezin/DomoticzLinky), a [Domoticz](https://www.domoticz.com/) plugin, adapted to [Enedis data hub](https://datahub-enedis.fr)
 
-This service acts as an OAuth server that implements the device code flow, proxying to a real OAuth server behind the scenes.
+This service acts as an OAuth server that implements the device code flow, proxying to a real OAuth server behind the scenes, and acts as a proxy to hide client secret while refreshing tokens.
 
 Installation
 ------------
@@ -18,30 +18,6 @@ In the `.env` file, fill out the required variables.
 You will need to install Redis if it is not already on your system, or point to an existing redis server in the config file.
 
 Define your OAuth server's authorization endpoint and token endpoint URL.
-
-### Heroku Deploy
-
-To deploy this in Heroku, you'll need to do the following:
-
-Create a new Heroku application, and take note of the name.
-
-Define environment variables in Heroku's admin interface based on the values from `.env.example` with the exception of `REDIS_URL`.
-
-![Heroku Config](heroku-env.png)
-
-```
-# Log in to your Heroku account
-heroku login
-
-# Define the Heroku upstream git repo from your app name
-heroku git:remote -a oauth-device-flow-demo
-
-# Enable Redis for your application
-heroku addons:create heroku-redis:hobby-dev
-
-# Deploy to Heroku
-git push heroku master
-```
 
 
 Usage
