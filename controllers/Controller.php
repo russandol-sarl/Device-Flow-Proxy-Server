@@ -95,7 +95,7 @@ class Controller {
   # and looks up the user code, and then redirects to the real authorization server
   public function verify_code(Request $request, Response $response) {
     if($request->get('code') == null) {
-      return $this->html_error($response, 'invalid_request', 'No code was entered');
+      return $this->html_error($response, 'invalid_request', 'Aucun code n\'a été entré');
     }
 
     $user_code = $request->get('code');
@@ -104,7 +104,7 @@ class Controller {
 
     $cache = Cache::get($user_code);
     if(!$cache) {
-      return $this->html_error($response, 'invalid_request', 'Code not found');
+      return $this->html_error($response, 'invalid_request', 'Code non valide');
     }
 
     $state = bin2hex(random_bytes(16)) . '1';
@@ -143,12 +143,12 @@ class Controller {
   public function redirect(Request $request, Response $response) {
     # Verify input params
     if($request->get('state') == false || $request->get('code') == false) {
-      return $this->html_error($response, 'Invalid Request', 'Request was missing parameters');
+      return $this->html_error($response, 'Invalid Request', 'Des paramètres manquent dans la requête');
     }
 
     # Check that the state parameter matches
     if(!($state=Cache::get('state:'.$request->get('state')))) {
-      return $this->html_error($response, 'Invalid State', 'The state parameter was invalid');
+      return $this->html_error($response, 'Invalid State', 'Le paramètre state n\'est pas valide');
     }
 
     # Look up the info from the user code provided in the state parameter
@@ -188,7 +188,7 @@ class Controller {
       # If there are any problems getting an access token, kill the request and display an error
       Cache::delete($state->user_code);
       Cache::delete($cache->device_code);
-      return $this->html_error($response, 'Error Logging In', 'There was an error getting an access token from the service <p><pre>'.$token_response.'</pre></p>');
+      return $this->html_error($response, 'Error Logging In', 'Il y a eu une erreur en essayant d\'obtenir un jeton d\'accès du service <p><pre>'.$token_response.'</pre></p>');
     }
     
     // pass other parameters as json attributes
