@@ -18,11 +18,12 @@ class Controller {
     return $response;
   }
 
-  private function html_error(Response $response, $error, $error_description) {
+  private function html_error(Request $request, Response $response, $error, $error_description) {
     $response->setStatusCode(400);
     $response->setContent(view('error', [
       'error' => $error,
-      'error_description' => $error_description
+      'error_description' => $error_description,
+      'base_url' => $request->getBaseUrl()
     ]));
     return $response;
   }
@@ -36,7 +37,7 @@ class Controller {
   # Home Page
   public function index(Request $request, Response $response) {
     $response->setContent(view('index', [
-      'title' => 'Device Flow Proxy Server pour DomoticzLinky'
+      'base_url' => $request->getBaseUrl()
     ]));
     return $response;
   }
@@ -87,7 +88,10 @@ class Controller {
   # The user visits this page in a web browser
   # This interface provides a prompt to enter a device code, which then begins the actual OAuth flow
   public function device(Request $request, Response $response) {
-    $response->setContent(view('device', ['code' => $request->get('code')]));
+    $response->setContent(view('device', [
+      'code' => $request->get('code'),
+      'base_url' => $request->getBaseUrl()
+    ]));
     return $response;
   }
 
@@ -95,7 +99,7 @@ class Controller {
   # and looks up the user code, and then redirects to the real authorization server
   public function verify_code(Request $request, Response $response) {
     if($request->get('code') == null) {
-      return $this->html_error($response, 'invalid_request', 'Aucun code n\'a été entré');
+      return $this->html_error($request, $response, 'invalid_request', 'Aucun code n\'a été entré');
     }
 
     $user_code = $request->get('code');
@@ -104,7 +108,7 @@ class Controller {
 
     $cache = Cache::get($user_code);
     if(!$cache) {
-      return $this->html_error($response, 'invalid_request', 'Code non valide');
+      return $this->html_error($request, $response, 'invalid_request', 'Code non valide');
     }
 
     $state = bin2hex(random_bytes(16)) . '1';
@@ -143,12 +147,12 @@ class Controller {
   public function redirect(Request $request, Response $response) {
     # Verify input params
     if($request->get('state') == false || $request->get('code') == false) {
-      return $this->html_error($response, 'Invalid Request', 'Des paramètres manquent dans la requête');
+      return $this->html_error($request, $response, 'Invalid Request', 'Des paramètres manquent dans la requête');
     }
 
     # Check that the state parameter matches
     if(!($state=Cache::get('state:'.$request->get('state')))) {
-      return $this->html_error($response, 'Invalid State', 'Le paramètre state n\'est pas valide');
+      return $this->html_error($request, $response, 'Invalid State', 'Le paramètre state n\'est pas valide');
     }
 
     # Look up the info from the user code provided in the state parameter
@@ -188,7 +192,7 @@ class Controller {
       # If there are any problems getting an access token, kill the request and display an error
       Cache::delete($state->user_code);
       Cache::delete($cache->device_code);
-      return $this->html_error($response, 'Error Logging In', 'Il y a eu une erreur en essayant d\'obtenir un jeton d\'accès du service <p><pre>'.$token_response.'</pre></p>');
+      return $this->html_error($request, $response, 'Error Logging In', 'Il y a eu une erreur en essayant d\'obtenir un jeton d\'accès du service <p><pre>'.$token_response.'</pre></p>');
     }
     
     // pass other parameters as json attributes
@@ -213,7 +217,7 @@ class Controller {
     Cache::delete($state->user_code);
 
     $response->setContent(view('signed-in', [
-      'title' => 'Consentement obtenu'
+      'base_url' => $request->getBaseUrl()
     ]));
     return $response;
   }

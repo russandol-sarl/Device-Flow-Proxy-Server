@@ -1,12 +1,9 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <title><?= $this->e($title) ?></title>
-    <link href="/domoticzlinkyconnect/assets/styles.css" rel="stylesheet">
-    <link href='https://fonts.googleapis.com/css?family=Open+Sans:400,700' rel='stylesheet' type='text/css'>
-    <link rel="stylesheet" type="text/css" href="/domoticzlinkyconnect/assets/normalize.css" media="screen">
-    <link rel="stylesheet" type="text/css" href="/domoticzlinkyconnect/assets/cayman.css" media="screen">
-    <script src="/domoticzlinkyconnect/assets/script.js"></script>
+  <title><?= $title ?></title>
+    <link rel="stylesheet" type="text/css" href="<?= $base_url ?>/assets/normalize.css" media="screen">
+    <link rel="stylesheet" type="text/css" href="<?= $base_url ?>/assets/cayman.css" media="screen">
   <meta name="viewport" content="width=device-width, initial-scale=1">
 </head>
 <body>
@@ -27,7 +24,7 @@
 <span class="site-footer-credits"><p>Les sources de ce site sont accessibles à l'adresse <a href="https://github.com/guillaumezin/Device-Flow-Proxy-Server">https://github.com/guillaumezin/Device-Flow-Proxy-Server</a>.</p>
 <p>Les sources du plugin sont accessibles à l'adresse <a href="https://github.com/guillaumezin/DomoticzLinky">https://github.com/guillaumezin/DomoticzLinky</a>.</p>
 <p>Les sources de Domoticz sont accessibles à l'adresse <a href="https://www.domoticz.com">https://www.domoticz.com</a>.</p></span>
-<span class="site-footer-credits"><p>Cette page utilise le thème the <a href="https://github.com/jasonlong/cayman-theme">Cayman</a> réalisé par <a href="https://twitter.com/jasonlong">Jason Long</a>.</p></span>
+<span class="site-footer-credits"><p>Cette page utilise le thème <a href="https://github.com/jasonlong/cayman-theme">Cayman</a> réalisé par <a href="https://twitter.com/jasonlong">Jason Long</a>.</p></span>
 </footer>
 </section>
 

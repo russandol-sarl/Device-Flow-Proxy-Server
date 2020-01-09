@@ -1,4 +1,4 @@
-<?php $this->layout('layout', ['title' => 'Entrez le code']); ?>
+<?php $this->layout('layout', ['title' => 'Entrez le code', 'base_url' => $base_url]); ?>
 
 <p>Enedis gère le réseau d’électricité jusqu’au compteur d’électricité. Cette page a pour but de lancer le consentement vous permettant d'autoriser Enedis à transmettre vos données Linky au plugin DomoticzLinky.</p>
 
@@ -14,7 +14,7 @@
 <p>Pour continuer, entrez ci-dessous le code obtenu dans les logs de Domoticz (dans Configuration / Log).</p>
 <?php endif ?>
 
-<form action="https://opensrcdev.alwaysdata.net/domoticzlinkyconnect/auth/verify_code" method="get">
+<form action="<?= $base_url ?>/auth/verify_code" method="get">
   <input type="text" name="code" placeholder="XXXX-XXXX" id="user_code" value="<?= $code ?>" autocomplete="off">
   <input type="submit">
 </form>
