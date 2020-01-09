@@ -1,13 +1,13 @@
 OAuth 2.0 Device Flow Proxy Server for Enedis
 =============================================
 
-An OAuth 2.0 Device Code flow for [DomoticzLinky](https://github.com/guillaumezin/DomoticzLinky), a [Domoticz](https://www.domoticz.com/) plugin, adapted to [Enedis data hub](https://datahub-enedis.fr)
+An OAuth 2.0 Device Code flow for [DomoticzLinky](https://github.com/guillaumezin/DomoticzLinky), a [Domoticz](https://www.domoticz.com/) plugin, adapted to [Enedis data hub](https://datahub-enedis.fr).
 
 This project if a fork of https://github.com/aaronpk/Device-Flow-Proxy-Server, a big thanks to him.
 
 This service acts as an OAuth server that implements the device code flow, proxying to a real OAuth server behind the scenes.
 
-Compared to the original project, this implementation uses MongoDB instead of Redis (because it was easier for me to find a serious and free provider with MongoDB), it adds a feature to provide client_secret from .env file instead of getting it from device request, to keep it private, and it can act as a proxy to add this client_secret from `.env` file to Enedis, if you don't want the device to provide it.
+Compared to the original project, this implementation uses MongoDB instead of Redis (because it was easier for me to find a serious and free provider with MongoDB), it sends back all parameters received during redirect (mainly to get usage_point_id from Enedis), it adds a feature to provide client_secret from .env file instead of getting it from device request, to keep it private, and it can act as a proxy to add this client_secret from `.env` file to Enedis when refreshing tokens, if you don't want the device to provide it.
 
 Installation
 ------------
@@ -90,7 +90,7 @@ Once the user has finished logging in and granting access to the application, th
 If the client_secret is not known by the device but is configured in the `.env` file, you can refresh the token with:
 
 ```
-curl http://opensrcdev.alwaysdata.net/domoticzlinkyconnect/device/proxy -d grant_type=refresh_token \
+curl http://localhost:8080/device/proxy -d grant_type=refresh_token \
   -d client_id=1234567890 \
   -d refresh_token=QcMhancv1wPyi8uwnkzcTNyd397oC7K0La8otPcssYMpXT
 ```
