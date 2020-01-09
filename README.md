@@ -90,7 +90,7 @@ Once the user has finished logging in and granting access to the application, th
 If the client_secret is not known by the device but is configured in the `.env` file, you can refresh the token with:
 
 ```
-curl http://opensrcdev.alwaysdata.net/domoticzlinkyconnect/device/proxy -d grant_type=refresh_token \
+curl http://localhost:8080/device/proxy -d grant_type=refresh_token \
   -d client_id=1234567890 \
   -d refresh_token=QcMhancv1wPyi8uwnkzcTNyd397oC7K0La8otPcssYMpXT
 ```
