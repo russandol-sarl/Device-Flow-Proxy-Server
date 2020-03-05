@@ -122,7 +122,7 @@ class Controller {
     $query = [
       'response_type' => 'code',
       'client_id' => $cache->client_id,
-      'redirect_uri' => getenv('REDIRECT_URI'),
+      //'redirect_uri' => getenv('REDIRECT_URI'),
       'state' => $state,
       'duration' => getenv('DURATION'),
     ];
