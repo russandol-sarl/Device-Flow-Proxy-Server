@@ -145,6 +145,12 @@ class Controller {
   # be redirected back to here. We'll need to exchange the auth code for an access token,
   # and then show a message that instructs the user to go back to their TV and wait.
   public function redirect(Request $request, Response $response) {
+    # Check if error
+    $error = $request->get('error');
+    if($error) {
+      return $this->html_error($request, $response, $error, $request->get('error_description'));
+    }
+
     # Verify input params
     if($request->get('state') == false || $request->get('code') == false) {
       return $this->html_error($request, $response, 'Invalid Request', 'Des paramètres manquent dans la requête');
