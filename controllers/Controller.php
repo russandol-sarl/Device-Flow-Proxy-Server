@@ -122,12 +122,16 @@ class Controller {
     $query = [
       'response_type' => 'code',
       'client_id' => $cache->client_id,
-      //'redirect_uri' => getenv('REDIRECT_URI'),
       'state' => $state,
       'duration' => getenv('DURATION'),
     ];
-    if($cache->scope)
+    $redirect_uri = getenv('REDIRECT_URI');
+    if ($redirect_uri) {
+      $query['redirect_uri'] = $redirect_uri;
+    }
+    if($cache->scope) {
       $query['scope'] = $cache->scope;
+    }
     if(getenv('PKCE')) {
       $pkce_challenge = base64_urlencode(hash('sha256', $cache->pkce_verifier, true));
       $query['code_challenge'] = $pkce_challenge;
@@ -172,9 +176,12 @@ class Controller {
     $params = [
       'grant_type' => 'authorization_code',
       'code' => $request->get('code'),
-      'redirect_uri' => getenv('REDIRECT_URI'),
       'client_id' => $cache->client_id,
     ];
+    $redirect_uri = getenv('REDIRECT_URI');
+    if ($redirect_uri) {
+      $params['redirect_uri'] = $redirect_uri;
+    }
     $envSecret = getenv('CLIENT_SECRET');
     if($envSecret) {
       $params['client_secret'] = $envSecret;
@@ -253,12 +260,17 @@ class Controller {
     if($envSecret) {
       $params['client_secret'] = $envSecret;
     }
-    
-    $query = [
-      'redirect_uri' => getenv('REDIRECT_URI'),
-    ];
-    
-    $tokenURL = getenv('TOKEN_ENDPOINT') . '?' . http_build_query($query);
+
+    $redirect_uri = getenv('REDIRECT_URI');
+    if ($redirect_uri) {
+        $query = [
+          'redirect_uri' => $redirect_uri,
+        ];
+        $tokenURL = getenv('TOKEN_ENDPOINT') . '?' . http_build_query($query);
+    }
+    else {
+        $tokenURL = getenv('TOKEN_ENDPOINT');
+    }
     
     self::resetHeaders();
 
