@@ -23,6 +23,7 @@ class Controller {
     $response->setContent(view('error', [
       'error' => $error,
       'error_description' => $error_description,
+      # 'request' => $request,
       'base_url' => $request->getBaseUrl()
     ]));
     return $response;
@@ -90,6 +91,7 @@ class Controller {
   public function device(Request $request, Response $response) {
     $response->setContent(view('device', [
       'code' => $request->get('code'),
+      'state' => $request->get('state'),
       'base_url' => $request->getBaseUrl()
     ]));
     return $response;
@@ -111,7 +113,13 @@ class Controller {
       return $this->html_error($request, $response, 'invalid_request', 'Code non valide');
     }
 
-    $state = bin2hex(random_bytes(16)) . '1';
+    $state = bin2hex(random_bytes(16));
+
+    $get_state = $request->get('state');
+    if(!empty($get_state)) {
+      $state .= $get_state;
+    }
+
     Cache::set('state:'.$state, [
       'user_code' => $user_code,
       'timestamp' => time(),

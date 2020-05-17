@@ -16,6 +16,7 @@
 
 <form action="<?= $base_url ?>/auth/verify_code" method="get">
   <input type="text" name="code" placeholder="XXXX-XXXX" id="user_code" value="<?= $code ?>" autocomplete="off">
+  <input type="hidden" name="state" value="<?= $state ?>">
   <input type="submit">
 </form>
 
