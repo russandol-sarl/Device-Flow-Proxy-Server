@@ -15,9 +15,15 @@
 <?php endif ?>
 
 <form action="<?= $base_url ?>/auth/verify_code" method="get">
-  <input type="text" name="code" placeholder="XXXX-XXXX" id="user_code" value="<?= $code ?>" autocomplete="off">
-  <input type="hidden" name="state" value="<?= $state ?>">
-  <input type="submit">
+<div style="text-align: center">
+  <p><input type="text" name="code" placeholder="XXXX-XXXX" id="user_code" value="<?= $code ?>" autocomplete="off">
+  <input type="hidden" name="state" value="<?= $state ?>"></p>
+  <p>
+    <button type="submit" style="border: 0; padding: 0; width: 282px; height: 79px;" name="btnSubmit" title="Accéder à mon espace Enedis">
+      <img src="https://datahub-enedis.fr/wp-content/uploads/2018/11/blanc-txtbleu.png"/>
+    </button>
+  </p>
+</div>
 </form>
 
 <script>
