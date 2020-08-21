@@ -133,10 +133,11 @@ class Controller {
       'state' => $state,
       'duration' => getenv('DURATION'),
     ];
-    $redirect_uri = getenv('REDIRECT_URI');
-    if ($redirect_uri) {
-      $query['redirect_uri'] = $redirect_uri;
-    }
+    // FIX ENEDIS : Don't add REDIRECT_URI during the verifying process !
+    //$redirect_uri = getenv('REDIRECT_URI');
+    //if ($redirect_uri) {
+      //$query['redirect_uri'] = $redirect_uri;
+    //}
     if($cache->scope) {
       $query['scope'] = $cache->scope;
     }
