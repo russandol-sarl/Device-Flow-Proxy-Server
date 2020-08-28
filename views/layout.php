@@ -4,6 +4,7 @@
   <title><?= $title ?></title>
     <link rel="stylesheet" type="text/css" href="<?= $base_url ?>/assets/normalize.css" media="screen">
     <link rel="stylesheet" type="text/css" href="<?= $base_url ?>/assets/cayman.css" media="screen">
+    <link rel="icon" href="data:;base64,iVBORw0KGgo=">
   <meta name="viewport" content="width=device-width, initial-scale=1">
 </head>
 <body>
