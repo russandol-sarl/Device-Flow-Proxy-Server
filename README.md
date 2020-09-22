@@ -1,3 +1,10 @@
+# Participer aux frais d'hébergement
+
+Le proxy permettant de gérer l'authentification auprès d'Enedis pour que le plugin Linky puisse récupérer les consommations / producions d'eléctricité, est hébergé sur un serveur dédié. Si vous le souhiatez, vous pouvez participer aux frais d'hébergement en cliquant sur le bouton ci-dessous.
+
+[![Faire un don](https://img.shields.io/badge/Donate-PayPal-green.svg)](https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=7FJWZVDPXFTEG&source=url)
+
+
 OAuth 2.0 Device Flow Proxy Server for Enedis
 =============================================
 
