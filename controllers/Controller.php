@@ -3,6 +3,8 @@ use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 
 class Controller {
+  const MSG_VER_ERROR = 'version_mismatch';
+  const MSG_VER_ERROR_LONG = 'Votre version du plugin est trop ancienne, veuillez la mettre à jour';
 
   private function error(Response $response, $error, $error_description=false) {
     $data = [
@@ -43,12 +45,36 @@ class Controller {
     return $response;
   }
 
+  # Check version of env file if defined against user agent header
+  public function checkVersion(Request $request) {
+    $versionMin = getenv('VERSION_MIN');
+    if($versionMin) {
+      $userAgent = $request->headers->get('User-Agent');
+      $pieces = explode('/', $userAgent);
+      # check version
+      if (count($pieces) > 1) {
+          $version = $pieces[1];
+          if (version_compare($version, $versionMin) >= 0) {
+              return true;
+          }
+      }
+      return false;
+    }
+    else {
+      return true;
+    }
+  }
+  
   # A device submits a request here to generate a new device and user code
   public function generate_code(Request $request, Response $response) {
     # Params:
     # client_id
     # scope
 
+    if (!$this->checkVersion($request)) {
+      return $this->error($response, self::MSG_VER_ERROR, self::MSG_VER_ERROR_LONG);
+    }
+    
     # client_id is required
     if($request->get('client_id') == null) {
       return $this->error($response, 'invalid_request', 'Missing client_id');
@@ -262,6 +288,10 @@ class Controller {
   
   # Proxy to TOKEN_ENDPOINT
   public function proxy(Request $request, Response $response) {
+    if (!$this->checkVersion($request)) {
+      return $this->error($response, self::MSG_VER_ERROR, self::MSG_VER_ERROR_LONG);
+    }
+    
     $params = $request->request->all();
   
     $envSecret = getenv('CLIENT_SECRET');
@@ -305,6 +335,9 @@ class Controller {
   # In addition to the standard OAuth error responses defined in https://tools.ietf.org/html/rfc6749#section-4.2.2.1
   # the server should return: authorization_pending and slow_down
   public function access_token(Request $request, Response $response) {
+    if (!$this->checkVersion($request)) {
+      return $this->error($response, self::MSG_VER_ERROR, self::MSG_VER_ERROR_LONG);
+    }
 
     if($request->get('device_code') == null || $request->get('client_id') == null || $request->get('grant_type') == null) {
       return $this->error($response, 'invalid_request');
