@@ -61,6 +61,13 @@ The device should instruct the user to visit the URL and enter the code, or can 
 
 `http://localhost:8080/device?code=248707`
 
+If the servers are using the client_credentials flow, add a state parameter ending with "-cg"
+
+```
+`http://localhost:8080/device?code=248707`&state=-cg
+```
+
+
 The device should then poll the token endpoint at the interval provided, making a POST request like the below:
 
 ```
@@ -95,6 +102,15 @@ curl http://localhost:8080/device/proxy -d grant_type=refresh_token \
   -d refresh_token=QcMhancv1wPyi8uwnkzcTNyd397oC7K0La8otPcssYMpXT
 ```
 
+or if the servers are using the client_credentials flow:
+
+```
+curl http://localhost:8080/device/token -d grant_type=refresh_token \
+  -d client_id=1234567890 \
+  -d usage_point_id=1234567890abcd \
+  -d refresh_token=QcMhancv1wPyi8uwnkzcTNyd397oC7K0La8otPcssYMpXT
+```
+
 You'll get a response with new access and refresh tokens.
 
 
@@ -106,4 +122,13 @@ You'll get a response with new access and refresh tokens.
   "expires_in": 12600,
   "usage_point_id" : "1234567890abcd"
 }
+```
+
+If the servers are not using the client_credentials flow, you can now send your data request to final server with the obtained access_token.
+
+If the servers are using the client_credentials flow, you can now send your data request to this address (replace path1/path2 with the path you want your request to go to, the server address is configured with DATA_ENDPOINT variable in .env file):
+
+```
+curl http://localhost:8080/data/proxy/path1/path2?param1=value&param2=value \
+  --header "Autorization: Bearer 6czyedyLUHvyjtWZuWwBLkXNZhzk9QLP9Cip5NPhFNmc8znWoPipnW"
 ```
