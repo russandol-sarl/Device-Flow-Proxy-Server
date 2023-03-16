@@ -6,6 +6,7 @@ class Controller {
   const MSG_VER_ERROR = 'version_mismatch';
   const MSG_VER_ERROR_LONG = 'Votre version du plugin est trop ancienne, veuillez la mettre à jour';
 
+  #TODO varier erreur 400 (403 pour token invalide ? Cf. plugin.py)
   private function error(Response $response, $error, $error_description=false, $errno=400) {
     $data = [
       'error' => $error
@@ -202,7 +203,7 @@ class Controller {
     }
 
     # if state ends with '-cg', the call comes initially from recent plugin versions which wants us to use client credentials between this server and Enedis
-    if (str_ends_with($get_state, '-cg')) {
+    if (str_ends_with($get_state, '-cg')) {      
       $usage_points_id = $request->get('$usage_point_id');
       $usage_points_id_tab = explore(',', $usage_points_id);
       if($usage_point_id == false) {
@@ -268,7 +269,7 @@ class Controller {
         Cache::delete($cache->device_code);
         return $this->html_error($request, $response, 'Error Logging In', 'Il y a eu une erreur en essayant d\'obtenir un jeton d\'accès du service <p><pre>'.$token_response.'</pre></p>');
       }
-
+      
       // pass other parameters as json attributes
       foreach ($request->request as $key => $value) {
         if (($key != "state") and ($key != 'code')) {
@@ -367,13 +368,13 @@ class Controller {
 
     $client_id = $request->get('client_id');
     if($client_id == null || $request->get('grant_type') == null) {
-      return $this->error($response, 'invalid_request');
+      return $this->error($response, 'invalid_request', 'Missing client_id');
     }
-
+    
     # This server supports the device_code response type
     if($request->get('grant_type') == 'urn:ietf:params:oauth:grant-type:device_code') {
       if($request->get('device_code') == null) {
-        return $this->error($response, 'invalid_request');
+        return $this->error($response, 'invalid_request', 'Missing device_code');
       }
       $device_code = $request->get('device_code');
 
@@ -394,9 +395,9 @@ class Controller {
 
       # Check if the device code is in the cache
       $data = Cache::get($device_code);
-
+      
       if(!$data) {
-        return $this->error($response, 'invalid_grant');
+        return $this->error($response, 'invalid_grant', 'device_code not found in db');
       }
 
       if($data && $data->status == 'pending') {
@@ -406,20 +407,23 @@ class Controller {
         Cache::delete($device_code);
         return $this->success($response, $data->token_response);
       } else {
-        return $this->error($response, 'invalid_grant');
+        return $this->error($response, 'invalid_grant', 'Authorization unsuccessful');
       }
     }
-    // To test:
+    // To test: 
     // curl -X POST url/device/token -H 'Content-Type: application/x-www-form-urlencoded' -d 'grant_type=refresh_token&client_id=xxxx'
     elseif($request->get('grant_type') == 'refresh_token') {
       if($client_id != getenv('CLIENT_ID')) {
         return $this->error($response, 'invalid_request', 'Bad client_id');
       }
-      $usage_points_id = $request->get('usage_point_id');
+      $usage_points_id = $request->get('usage_points_id');
       if($usage_points_id == null) {
-        return $this->error($response, 'invalid_request', 'Missing usage_point_id');
+        return $this->error($response, 'invalid_request', 'Missing usage_points_id');
       }
-
+      $refresh_token = $request->get('refresh_token');
+      if($refresh_token == null) {
+        return $this->error($response, 'invalid_request', 'Missing refresh_token');
+      }
       #####################
       ## RATE LIMITING
 
@@ -442,15 +446,15 @@ class Controller {
         # Check if the refresh_token is in the cache
         $old_refresh_token = Cache::get('usage_point_refresh_token:'.$one_usage_point_id);
         if (!$old_refresh_token) {
-          return $this->error($response, 'Unauthorized', 'refresh_token not found in database', 404);
+          return $this->error($response, 'invalid_request', 'refresh_token not found in database');
         }
         if ($old_refresh_token != $refresh_token) {
-          return $this->error($response, 'Unauthorized', 'Bad refresh_token', 404);
+          return $this->error($response, 'invalid_request', 'Bad refresh_token');
         }
         Cache::set('usage_point_access_token:'.$one_usage_point_id, $new_access_token, 12600);
       }
-
-      if($old_refresh_token) {
+      
+      if($old_refresh_token) {      
         $access_token = new stdClass();
         $access_token->access_token = $new_access_token;
         $access_token->token_type = 'Bearer';
@@ -461,7 +465,7 @@ class Controller {
         return $response;
       }
       else {
-        return $this->error($response, 'invalid_request', 'usage_points_id empty or corrupted');
+        return $this->error($response, 'invalid_request', 'usage_points_id empty of corrupted');
       }
     }
     else {
@@ -503,9 +507,9 @@ class Controller {
   # get json data with cURL
   private function get_data($path, $cg, $query){
     $query2 = http_build_query(array_slice($query->all(), 1));
-
-    self::resetHeaders();
-
+    
+    self::resetHeaders();    
+    
     $ch = curl_init();
     curl_setopt($ch, CURLOPT_URL, getenv('DATA_ENDPOINT') . '/' . $path. '?' . $query2);
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
@@ -517,7 +521,7 @@ class Controller {
     $errno = curl_errno($ch);
     return array($errno, $html_code, $data);
   }
-
+  
   # Proxy to data
   public function proxy_data(Request $request, Response $response, $vars) {
     if (!$this->checkVersion($request)) {
@@ -528,35 +532,35 @@ class Controller {
     if($path == null) {
       return $this->error($response, 'invalid_request', 'path empty');
     }
-
-    $usage_point_id = $request->get('usage_point_id', 'usage_point_id missing');
+    
+    $usage_point_id = $request->get('usage_point_id');
     if($usage_point_id == null) {
-      return $this->error($response, 'invalid_request');
+      return $this->error($response, 'invalid_request', 'Missing usage_point_id');
     }
-
+    
     if(!getenv('DISABLE_DATA_ENPOINT_AUTH')) {
       $auth = $request->headers->get('Authorization');
       if(!$auth) {
-        return $this->error($response, 'Unauthorized', 'autorization missing', 404);
-      }
+        return $this->error($response, 'Unauthorized', 'Autorization missing', 404);
+      }    
       $token = Cache::get('usage_point_access_token:'.$usage_point_id);
       $refresh = Cache::get('usage_point_refresh_token:'.$usage_point_id);
       if(!$token and !$refresh) {
-        return $this->error($response, 'Unauthorized', 'no tokens in database', 404);
-      }
+        return $this->error($response, 'Unauthorized', 'No tokens in database', 404);
+      }    
       if(!$token and $refresh) {
-        return $this->error($response, 'invalid_token', 'access token timed out', 403);
+        return $this->error($response, 'invalid_token', 'Access token timed out', 403);
       }
-
+      
       $prefix = 'Bearer ';
       if (substr($auth, 0, strlen($prefix)) == $prefix) {
           $auth = substr($auth, strlen($prefix));
-      }
+      }     
       if($token != $auth) {
-        return $this->error($response, 'Unauthorized', 'bad access token', 404);
+        return $this->error($response, 'Unauthorized', 'Bad access token', 404);
       }
     }
-
+    
     $cip = $request->getClientIp();
     # Count the number of requests per minute
     $bucket = 'ratelimit-'.floor(time()/60).'-ip-'.$cip;
@@ -574,29 +578,29 @@ class Controller {
     if (!$cg) {
       $cg = self::refresh_client_credentials();
       if (!$cg) {
-        return $this->error($response, 'Unauthorized', 'cannot get client credentials', 404);
+        return $this->error($response, 'Unauthorized', 'Cannot get client credentials', 404);
       }
     }
     list($errno, $html_code, $data) = self::get_data($path, $cg, $request->query);
     if ($html_code == 403) {
       $cg = self::refresh_client_credentials();
       if (!$cg) {
-        return $this->error($response, 'Unauthorized', 'cannot get client credentials', 404);
-      }
+        return $this->error($response, 'Unauthorized', 'Cannot get client credentials', 404);
+      }      
       list($errno, $html_code, $data) = self::get_data($path, $cg, $request->query);
     }
-
+    
     if (array_key_exists('content-type', self::$headers)) {
       $response->headers->set('content-type', self::$headers['content-type']);
     }
-
+    
     if ($errno == 0) {
       $response->setContent($data);
     }
     else {
       return $this->error($response, 'invalid_request', 'cURL error ' . strval($errno));
     }
-
+        
     return $response;
   }
 
