@@ -63,10 +63,7 @@ The device should instruct the user to visit the URL and enter the code, or can 
 
 If the servers are using the client_credentials flow, add a state parameter ending with "-cg"
 
-```
-`http://localhost:8080/device?code=248707`&state=-cg
-```
-
+`http://localhost:8080/device?code=248707&state=-cg`
 
 The device should then poll the token endpoint at the interval provided, making a POST request like the below:
 
