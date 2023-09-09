@@ -126,6 +126,6 @@ If the servers are not using the client_credentials flow, you can now send your 
 If the servers are using the client_credentials flow, you can now send your data request to this address (replace path1/path2 with the path you want your request to go to, the server address is configured with DATA_ENDPOINT variable in .env file):
 
 ```
-curl http://localhost:8080/data/proxy/path1/path2?param1=value&param2=value \
-  --header "Autorization: Bearer 6czyedyLUHvyjtWZuWwBLkXNZhzk9QLP9Cip5NPhFNmc8znWoPipnW"
+curl --header "Authorization: Bearer 6czyedyLUHvyjtWZuWwBLkXNZhzk9QLP9Cip5NPhFNmc8znWoPipnW" \
+    http://localhost:8080/data/proxy/path1/path2?usage_point_id=1234567890abcd&param1=value&param2=value
 ```
