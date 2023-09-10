@@ -203,7 +203,7 @@ class Controller {
     }
 
     # if state ends with '-cg', the call comes initially from recent plugin versions which wants us to use client credentials between this server and Enedis
-    if (str_ends_with($get_state, '-cg')) {      
+    if (substr($get_state, -3) == '-cg') {      
       $usage_points_id = $request->get('$usage_point_id');
       $usage_points_id_tab = explode(',', $usage_points_id);
       if($usage_point_id == false) {
