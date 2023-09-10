@@ -205,7 +205,7 @@ class Controller {
     # if state ends with '-cg', the call comes initially from recent plugin versions which wants us to use client credentials between this server and Enedis
     if (str_ends_with($get_state, '-cg')) {      
       $usage_points_id = $request->get('$usage_point_id');
-      $usage_points_id_tab = explore(',', $usage_points_id);
+      $usage_points_id_tab = explode(',', $usage_points_id);
       if($usage_point_id == false) {
         return $this->html_error($request, $response, 'Invalid Request', 'Le paramètre usage_point_id manque dans la requête');
       }
