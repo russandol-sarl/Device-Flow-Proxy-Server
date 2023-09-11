@@ -206,7 +206,7 @@ class Controller {
     if (substr($get_state, -3) == '-cg') {      
       $usage_points_id = $request->get('$usage_point_id');
       $usage_points_id_tab = explode(',', $usage_points_id);
-      if($usage_point_id == false) {
+      if($usage_points_id == false) {
         return $this->html_error($request, $response, 'Invalid Request', 'Le paramètre usage_point_id manque dans la requête');
       }
       $access_token = new stdClass();
@@ -288,12 +288,11 @@ class Controller {
         'token_response' => $access_token
       ], 120);
       Cache::delete($state->user_code);
-
-      $response->setContent(view('signed-in', [
-        'base_url' => $request->getBaseUrl()
-      ]));
-      return $response;
     }
+    $response->setContent(view('signed-in', [
+      'base_url' => $request->getBaseUrl()
+    ]));
+    return $response;
   }
 
   private static $headers;
