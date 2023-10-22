@@ -161,9 +161,12 @@ class Controller {
       'state' => $state,
       'duration' => getenv('DURATION'),
     ];
-    $redirect_uri = getenv('REDIRECT_URI');
-    if ($redirect_uri) {
-      $query['redirect_uri'] = $redirect_uri;
+    // It seems some servers using code grand don't like when we pass the redirect_uri parameter
+    if (substr($state, -3) == '-cg') {      
+      $redirect_uri = getenv('REDIRECT_URI');
+      if ($redirect_uri) {
+        $query['redirect_uri'] = $redirect_uri;
+      }
     }
     if($cache->scope) {
       $query['scope'] = $cache->scope;
