@@ -199,7 +199,7 @@ class Controller {
     }
 
     if (strtoupper(getenv('FLOW')) != 'DEVICE') {      
-      $usage_points_id = $request->get('$usage_point_id');
+      $usage_points_id = $request->get('usage_point_id');
       $usage_points_id_tab = explode(',', $usage_points_id);
       if($usage_points_id == false) {
         return $this->html_error($request, $response, 'Invalid Request', 'Le paramètre usage_point_id manque dans la requête');
