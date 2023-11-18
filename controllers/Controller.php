@@ -161,13 +161,6 @@ class Controller {
       'state' => $state,
       'duration' => getenv('DURATION'),
     ];
-    // It seems some servers using code grand don't like when we pass the redirect_uri parameter
-    if (substr($state, -3) == '-cg') {      
-      $redirect_uri = getenv('REDIRECT_URI');
-      if ($redirect_uri) {
-        $query['redirect_uri'] = $redirect_uri;
-      }
-    }
     if($cache->scope) {
       $query['scope'] = $cache->scope;
     }
@@ -206,7 +199,7 @@ class Controller {
     }
 
     # if state ends with '-cg', the call comes initially from recent plugin versions which wants us to use client credentials between this server and Enedis
-    if (substr($get_state, -3) == '-cg') {      
+    if (strtoupper(getenv('FLOW')) != 'DEVICE') {      
       $usage_points_id = $request->get('$usage_point_id');
       $usage_points_id_tab = explode(',', $usage_points_id);
       if($usage_points_id == false) {

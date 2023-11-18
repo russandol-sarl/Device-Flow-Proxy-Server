@@ -23,6 +23,8 @@ You will need to install MongoDB if it is not already on your system, or point t
 
 Define your OAuth server's authorization endpoint and token endpoint URL, and optionaly the client_secret, this way it will be kept private between your web server and Enedis, otherwise the device must provide it during requests.
 
+Set FLOW to DEVICE if you want to use the device authorization flow grant flow, otherwise client credentials flow will be used.
+
 
 Usage
 -----
@@ -60,10 +62,6 @@ The response will contain the URL the user should visit and the code they should
 The device should instruct the user to visit the URL and enter the code, or can provide a full link that pre-fills the code for the user in case the device is displaying a QR code.
 
 `http://localhost:8080/device?code=248707`
-
-If the servers are using the client_credentials flow, add a state parameter ending with "-cg"
-
-`http://localhost:8080/device?code=248707&state=-cg`
 
 The device should then poll the token endpoint at the interval provided, making a POST request like the below:
 
