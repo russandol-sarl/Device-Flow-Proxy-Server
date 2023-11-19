@@ -198,6 +198,9 @@ class Controller {
       return $this->html_error($request, $response, 'Invalid State', 'Le paramètre state n\'est pas valide');
     }
 
+    # Look up the info from the user code provided in the state parameter
+    $cache = Cache::get($state->user_code);
+    
     if (strtoupper(getenv('FLOW')) != 'DEVICE') {      
       $usage_points_id = $request->get('usage_point_id');
       $usage_points_id_tab = explode(',', $usage_points_id);
@@ -222,9 +225,6 @@ class Controller {
       Cache::delete($state->user_code);
     }
     else {
-      # Look up the info from the user code provided in the state parameter
-      $cache = Cache::get($state->user_code);
-
       # Exchange the authorization code for an access token
 
       # TODO: Might need to provide a way to customize this request in case of
