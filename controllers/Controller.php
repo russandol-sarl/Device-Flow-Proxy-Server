@@ -455,7 +455,7 @@ class Controller {
         $access_token->expires_in = '12600';
         $access_token->refresh_token = $old_refresh_token;
         $access_token->scope = '';
-        $response->setContent($access_token);
+        $response->setContent($this->_json($access_token));
         return $response;
       }
       else {

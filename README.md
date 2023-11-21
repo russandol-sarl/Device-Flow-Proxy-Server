@@ -102,7 +102,7 @@ or if the servers are using the client_credentials flow:
 ```
 curl -X POST http://localhost:8080/device/token -d grant_type=refresh_token \
   -d client_id=1234567890 \
-  -d usage_point_id=1234567890abcd \
+  -d usage_points_id=1234567890abcd \
   -d refresh_token=QcMhancv1wPyi8uwnkzcTNyd397oC7K0La8otPcssYMpXT
 ```
 
