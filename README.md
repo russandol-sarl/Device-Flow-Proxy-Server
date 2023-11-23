@@ -23,6 +23,8 @@ You will need to install MongoDB if it is not already on your system, or point t
 
 Define your OAuth server's authorization endpoint and token endpoint URL, and optionaly the client_secret, this way it will be kept private between your web server and Enedis, otherwise the device must provide it during requests.
 
+Set FLOW to DEVICE if you want to use the device authorization flow grant flow, otherwise client credentials flow will be used.
+
 
 Usage
 -----
@@ -36,13 +38,13 @@ http://localhost:8080/auth/redirect
 The device can begin the flow by making a POST request to this proxy:
 
 ```
-curl http://localhost:8080/device/code -d client_id=1234567890
+curl -X POST http://localhost:8080/device/code -d client_id=1234567890
 ```
 
 or if your device must provide client_secret (otherwise you can specify it in the `.env` file)
 
 ```
-curl http://localhost:8080/device/code -d client_id=1234567890 -d client_secret=12345678-1234-1234-1234-1234567890ab
+curl -X POST http://localhost:8080/device/code -d client_id=1234567890 -d client_secret=12345678-1234-1234-1234-1234567890ab
 ```
 
 The response will contain the URL the user should visit and the code they should enter, as well as a long device code.
@@ -64,7 +66,7 @@ The device should instruct the user to visit the URL and enter the code, or can 
 The device should then poll the token endpoint at the interval provided, making a POST request like the below:
 
 ```
-curl http://localhost:8080/device/token -d grant_type=urn:ietf:params:oauth:grant-type:device_code \
+curl -X POST http://localhost:8080/device/token -d grant_type=urn:ietf:params:oauth:grant-type:device_code \
   -d client_id=1234567890 \
   -d device_code=5cb3a6029c967a7b04f642a5b92b5cca237ec19d41853f55dcce98a4d2aa528f
 ```
@@ -90,8 +92,17 @@ Once the user has finished logging in and granting access to the application, th
 If the client_secret is not known by the device but is configured in the `.env` file, you can refresh the token with:
 
 ```
-curl http://localhost:8080/device/proxy -d grant_type=refresh_token \
+curl -X POST http://localhost:8080/device/proxy -d grant_type=refresh_token \
   -d client_id=1234567890 \
+  -d refresh_token=QcMhancv1wPyi8uwnkzcTNyd397oC7K0La8otPcssYMpXT
+```
+
+or if the servers are using the client_credentials flow:
+
+```
+curl -X POST http://localhost:8080/device/token -d grant_type=refresh_token \
+  -d client_id=1234567890 \
+  -d usage_points_id=1234567890abcd \
   -d refresh_token=QcMhancv1wPyi8uwnkzcTNyd397oC7K0La8otPcssYMpXT
 ```
 
@@ -106,4 +117,13 @@ You'll get a response with new access and refresh tokens.
   "expires_in": 12600,
   "usage_point_id" : "1234567890abcd"
 }
+```
+
+If the servers are not using the client_credentials flow, you can now send your data request to final server with the obtained access_token.
+
+If the servers are using the client_credentials flow, you can now send your data request to this address (replace path1/path2 with the path you want your request to go to, the server address is configured with DATA_ENDPOINT variable in .env file):
+
+```
+curl --header "Authorization: Bearer 6czyedyLUHvyjtWZuWwBLkXNZhzk9QLP9Cip5NPhFNmc8znWoPipnW" \
+    http://localhost:8080/data/proxy/path1/path2?usage_point_id=1234567890abcd&param1=value&param2=value
 ```

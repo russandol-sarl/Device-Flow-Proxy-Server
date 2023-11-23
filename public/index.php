@@ -19,6 +19,9 @@ $router->addRoute('POST', '/device/code', 'Controller::generate_code');
 $router->addRoute('POST', '/device/token', 'Controller::access_token');
 $router->addRoute('POST', '/device/proxy', 'Controller::proxy');
 
+# Data proxy
+$router->addRoute('GET', '/data/proxy/{path:.+}', 'Controller::proxy_data');
+
 $dispatcher = $router->getDispatcher();
 $request = Request::createFromGlobals();
 $response = $dispatcher->dispatch($request->getMethod(), $request->getPathInfo());

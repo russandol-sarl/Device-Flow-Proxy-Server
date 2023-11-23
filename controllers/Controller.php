@@ -6,7 +6,8 @@ class Controller {
   const MSG_VER_ERROR = 'version_mismatch';
   const MSG_VER_ERROR_LONG = 'Votre version du plugin est trop ancienne, veuillez la mettre à jour';
 
-  private function error(Response $response, $error, $error_description=false) {
+  #TODO varier erreur 400 (403 pour token invalide ? Cf. plugin.py)
+  private function error(Response $response, $error, $error_description=false, $errno=400) {
     $data = [
       'error' => $error
     ];
@@ -14,14 +15,14 @@ class Controller {
       $data['error_description'] = $error_description;
     }
 
-    $response->setStatusCode(400);
+    $response->setStatusCode($errno);
     $response->setContent($this->_json($data));
     $response->headers->set('Content-Type', 'application/json');
     return $response;
   }
 
-  private function html_error(Request $request, Response $response, $error, $error_description) {
-    $response->setStatusCode(400);
+  private function html_error(Request $request, Response $response, $error, $error_description, $errno = 400) {
+    $response->setStatusCode($errno);
     $response->setContent(view('error', [
       'error' => $error,
       'error_description' => $error_description,
@@ -76,7 +77,8 @@ class Controller {
     }
     
     # client_id is required
-    if($request->get('client_id') == null) {
+    $client_id = $request->get('client_id');
+    if($client_id == null) {
       return $this->error($response, 'invalid_request', 'Missing client_id');
     }
 
@@ -86,7 +88,7 @@ class Controller {
     # Generate a PKCE code_verifier and store it in the cache too
     $pkce_verifier = bin2hex(random_bytes(32));
     $cache = [
-      'client_id' => $request->get('client_id'),
+      'client_id' => $client_id,
       'client_secret' => $request->get('client_secret'),
       'scope' => $request->get('scope'),
       'device_code' => $device_code,
@@ -159,10 +161,6 @@ class Controller {
       'state' => $state,
       'duration' => getenv('DURATION'),
     ];
-    $redirect_uri = getenv('REDIRECT_URI');
-    if ($redirect_uri) {
-      $query['redirect_uri'] = $redirect_uri;
-    }
     if($cache->scope) {
       $query['scope'] = $cache->scope;
     }
@@ -189,80 +187,103 @@ class Controller {
       return $this->html_error($request, $response, $error, $request->get('error_description'));
     }
 
+    $get_state = $request->get('state');
     # Verify input params
-    if($request->get('state') == false || $request->get('code') == false) {
+    if($get_state == false || $request->get('code') == false) {
       return $this->html_error($request, $response, 'Invalid Request', 'Des paramètres manquent dans la requête');
     }
 
     # Check that the state parameter matches
-    if(!($state=Cache::get('state:'.$request->get('state')))) {
+    if(!($state=Cache::get('state:'.$get_state))) {
       return $this->html_error($request, $response, 'Invalid State', 'Le paramètre state n\'est pas valide');
     }
 
     # Look up the info from the user code provided in the state parameter
     $cache = Cache::get($state->user_code);
-
-    # Exchange the authorization code for an access token
-
-    # TODO: Might need to provide a way to customize this request in case of
-    # non-standard OAuth 2 services
-
-    $params = [
-      'grant_type' => 'authorization_code',
-      'code' => $request->get('code'),
-      'client_id' => $cache->client_id,
-    ];
-    $redirect_uri = getenv('REDIRECT_URI');
-    if ($redirect_uri) {
-      $params['redirect_uri'] = $redirect_uri;
-    }
-    $envSecret = getenv('CLIENT_SECRET');
-    if($envSecret) {
-      $params['client_secret'] = $envSecret;
-    }
-    elseif($cache->client_secret) {
-      $params['client_secret'] = $cache->client_secret;
-    }
-    if(getenv('PKCE')) {
-      $params['code_verifier'] = $cache->pkce_verifier;
-    }
-
-    $ch = curl_init();
-    curl_setopt($ch, CURLOPT_URL, getenv('TOKEN_ENDPOINT'));
-    curl_setopt($ch, CURLOPT_POST, true);
-    curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($params));
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-    $token_response = curl_exec($ch);
-    $access_token = json_decode($token_response);
-
-    if(!$access_token || !property_exists($access_token, 'access_token')) {
-      # If there are any problems getting an access token, kill the request and display an error
-      Cache::delete($state->user_code);
-      Cache::delete($cache->device_code);
-      return $this->html_error($request, $response, 'Error Logging In', 'Il y a eu une erreur en essayant d\'obtenir un jeton d\'accès du service <p><pre>'.$token_response.'</pre></p>');
-    }
     
-    // pass other parameters as json attributes
-    foreach ($request->request as $key => $value) {
-      if (($key != "state") and ($key != 'code')) {
-        $access_token->$key = $value;
+    if (strtoupper(getenv('FLOW')) != 'DEVICE') {      
+      $usage_points_id = $request->get('usage_point_id');
+      $usage_points_id_tab = explode(',', $usage_points_id);
+      if($usage_points_id == false) {
+        return $this->html_error($request, $response, 'Invalid Request', 'Le paramètre usage_point_id manque dans la requête');
       }
-    }
-    foreach ($request->query as $key => $value) {
-      if (($key != "state") and ($key != 'code')) {
-        $access_token->$key = $value;
+      $access_token = new stdClass();
+      $access_token->access_token = bin2hex(random_bytes(32));
+      $access_token->token_type = 'Bearer';
+      $access_token->expires_in = '12600';
+      $access_token->refresh_token = bin2hex(random_bytes(32));
+      $access_token->usage_points_id = $usage_points_id;
+      $access_token->scope = '';
+      foreach($usage_points_id_tab as $one_usage_point_id) {
+        Cache::set('usage_point_access_token:'.$one_usage_point_id, $access_token->access_token, 12600);
+        Cache::set('usage_point_refresh_token:'.$one_usage_point_id, $access_token->refresh_token, 4*365*24*60*60);
       }
+      Cache::set($cache->device_code, [
+        'status' => 'complete',
+        'token_response' => $access_token
+      ], 120);
+      Cache::delete($state->user_code);
     }
-    //if ($request->get('usage_point_id') != false) {
-    //}
+    else {
+      # Exchange the authorization code for an access token
 
-    # Stash the access token in the cache and display a success message
-    Cache::set($cache->device_code, [
-      'status' => 'complete',
-      'token_response' => $access_token
-    ], 120);
-    Cache::delete($state->user_code);
+      # TODO: Might need to provide a way to customize this request in case of
+      # non-standard OAuth 2 services
 
+      $params = [
+        'grant_type' => 'authorization_code',
+        'code' => $request->get('code'),
+        'client_id' => $cache->client_id,
+      ];
+      $redirect_uri = getenv('REDIRECT_URI');
+      if ($redirect_uri) {
+        $params['redirect_uri'] = $redirect_uri;
+      }
+      $envSecret = getenv('CLIENT_SECRET');
+      if($envSecret) {
+        $params['client_secret'] = $envSecret;
+      }
+      elseif($cache->client_secret) {
+        $params['client_secret'] = $cache->client_secret;
+      }
+      if(getenv('PKCE')) {
+        $params['code_verifier'] = $cache->pkce_verifier;
+      }
+
+      $ch = curl_init();
+      curl_setopt($ch, CURLOPT_URL, getenv('TOKEN_ENDPOINT'));
+      curl_setopt($ch, CURLOPT_POST, true);
+      curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($params));
+      curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+      $token_response = curl_exec($ch);
+      $access_token = json_decode($token_response);
+
+      if(!$access_token || !property_exists($access_token, 'access_token')) {
+        # If there are any problems getting an access token, kill the request and display an error
+        Cache::delete($state->user_code);
+        Cache::delete($cache->device_code);
+        return $this->html_error($request, $response, 'Error Logging In', 'Il y a eu une erreur en essayant d\'obtenir un jeton d\'accès du service <p><pre>'.$token_response.'</pre></p>');
+      }
+      
+      // pass other parameters as json attributes
+      foreach ($request->request as $key => $value) {
+        if (($key != "state") and ($key != 'code')) {
+          $access_token->$key = $value;
+        }
+      }
+      foreach ($request->query as $key => $value) {
+        if (($key != "state") and ($key != 'code')) {
+          $access_token->$key = $value;
+        }
+      }
+
+      # Stash the access token in the cache and display a success message
+      Cache::set($cache->device_code, [
+        'status' => 'complete',
+        'token_response' => $access_token
+      ], 120);
+      Cache::delete($state->user_code);
+    }
     $response->setContent(view('signed-in', [
       'base_url' => $request->getBaseUrl()
     ]));
@@ -318,7 +339,7 @@ class Controller {
     curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($params));
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
     // this function is called by curl for each header received
-    curl_setopt($ch, CURLOPT_HEADERFUNCTION, "Controller::setHeader");
+    curl_setopt($ch, CURLOPT_HEADERFUNCTION, 'Controller::setHeader');
 
     $token_response = curl_exec($ch);
     
@@ -339,22 +360,204 @@ class Controller {
       return $this->error($response, self::MSG_VER_ERROR, self::MSG_VER_ERROR_LONG);
     }
 
-    if($request->get('device_code') == null || $request->get('client_id') == null || $request->get('grant_type') == null) {
-      return $this->error($response, 'invalid_request');
+    $client_id = $request->get('client_id');
+    if($client_id == null || $request->get('grant_type') == null) {
+      return $this->error($response, 'invalid_request', 'Missing client_id');
+    }
+    
+    # This server supports the device_code response type
+    if($request->get('grant_type') == 'urn:ietf:params:oauth:grant-type:device_code') {
+      if($request->get('device_code') == null) {
+        return $this->error($response, 'invalid_request', 'Missing device_code');
+      }
+      $device_code = $request->get('device_code');
+
+      #####################
+      ## RATE LIMITING
+
+      # Count the number of requests per minute
+      $bucket = 'ratelimit-'.floor(time()/60).'-'.$device_code;
+
+      if(Cache::get($bucket) >= getenv('LIMIT_REQUESTS_PER_MINUTE')) {
+        return $this->error($response, 'slow_down');
+      }
+
+      # Mark for rate limiting
+      Cache::incr($bucket);
+      Cache::expire($bucket, 60);
+      #####################
+
+      # Check if the device code is in the cache
+      $data = Cache::get($device_code);
+      
+      if(!$data) {
+        return $this->error($response, 'invalid_grant', 'device_code not found in db');
+      }
+
+      if($data && $data->status == 'pending') {
+        return $this->error($response, 'authorization_pending');
+      } else if($data && $data->status == 'complete') {
+        # return the raw access token response from the real authorization server
+        Cache::delete($device_code);
+        return $this->success($response, $data->token_response);
+      } else {
+        return $this->error($response, 'invalid_grant', 'Authorization unsuccessful');
+      }
+    }
+    // To test: 
+    // curl -X POST url/device/token -H 'Content-Type: application/x-www-form-urlencoded' -d 'grant_type=refresh_token&client_id=xxxx'
+    elseif($request->get('grant_type') == 'refresh_token') {
+      if($client_id != getenv('CLIENT_ID')) {
+        return $this->error($response, 'invalid_request', 'Bad client_id');
+      }
+      $usage_points_id = $request->get('usage_points_id');
+      if($usage_points_id == null) {
+        return $this->error($response, 'invalid_request', 'Missing usage_points_id');
+      }
+      $refresh_token = $request->get('refresh_token');
+      if($refresh_token == null) {
+        return $this->error($response, 'invalid_request', 'Missing refresh_token');
+      }
+      #####################
+      ## RATE LIMITING
+
+      $cip = $request->getClientIp();
+      # Count the number of requests per minute
+      $bucket = 'ratelimit-'.floor(time()/60).'-ip-'.$cip;
+
+      if(Cache::get($bucket) >= getenv('LIMIT_REQUESTS_PER_MINUTE')) {
+        return $this->error($response, 'slow_down');
+      }
+
+      # Mark for rate limiting
+      Cache::incr($bucket);
+      Cache::expire($bucket, 60);
+      #####################
+
+      $usage_points_id_tab = explode(',', $usage_points_id);
+      $new_access_token = bin2hex(random_bytes(32));
+      foreach($usage_points_id_tab as $one_usage_point_id) {
+        # Check if the refresh_token is in the cache
+        $old_refresh_token = Cache::get('usage_point_refresh_token:'.$one_usage_point_id);
+        if (!$old_refresh_token) {
+          return $this->error($response, 'invalid_request', 'refresh_token not found in database');
+        }
+        if ($old_refresh_token != $refresh_token) {
+          return $this->error($response, 'invalid_request', 'Bad refresh_token');
+        }
+        Cache::set('usage_point_access_token:'.$one_usage_point_id, $new_access_token, 12600);
+      }
+      
+      if($old_refresh_token) {      
+        $access_token = new stdClass();
+        $access_token->access_token = $new_access_token;
+        $access_token->token_type = 'Bearer';
+        $access_token->expires_in = '12600';
+        $access_token->refresh_token = $old_refresh_token;
+        $access_token->scope = '';
+        $response->setContent($this->_json($access_token));
+        return $response;
+      }
+      else {
+        return $this->error($response, 'invalid_request', 'usage_points_id empty of corrupted');
+      }
+    }
+    else {
+      return $this->error($response, 'unsupported_grant_type', 'Only \'urn:ietf:params:oauth:grant-type:device_code\' and refresh_token are supported.');
+    }
+  }
+
+  # renew client_credentials
+  private function refresh_client_credentials(){
+    $envId = getenv('CLIENT_ID');
+    $envSecret = getenv('CLIENT_SECRET');
+    $params = [
+      'grant_type' => 'client_credentials',
+      'client_id' => $envId,
+      'client_secret' => $envSecret,
+    ];
+
+    $ch = curl_init();
+    curl_setopt($ch, CURLOPT_URL, getenv('TOKEN_ENDPOINT_V3'));
+    curl_setopt($ch, CURLOPT_POST, true);
+    curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($params));
+    curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_HTTPHEADER, array('Accept: application/json', 'Content-Type: application/x-www-form-urlencoded'));
+    $token_response = curl_exec($ch);
+    $access_token = json_decode($token_response);
+
+    if(!$access_token || !property_exists($access_token, 'access_token') || !property_exists($access_token, 'expires_in')) {
+      # If there are any problems getting an access token, kill the request and display an error
+      return null;
+    }
+    $expires_in = intval($access_token->expires_in);
+    if ($expires_in > 180) {
+      Cache::set('client_credentials', $access_token, $expires_in);
+    }
+    return $access_token;
+  }
+
+  # get json data with cURL
+  private function get_data($path, $cg, $query){
+    $query2 = http_build_query(array_slice($query->all(), 1));
+    
+    self::resetHeaders();    
+    
+    $ch = curl_init();
+    curl_setopt($ch, CURLOPT_URL, getenv('DATA_ENDPOINT') . '/' . $path. '?' . $query2);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+    curl_setopt($ch, CURLOPT_HEADERFUNCTION, 'Controller::setHeader');
+    curl_setopt($ch, CURLOPT_HTTPHEADER, array('Authorization: ' . $cg->token_type . ' '. $cg->access_token, 'Accept: application/json', 'Content-Type: application/x-www-form-urlencoded'));
+    $data = curl_exec($ch);
+    $html_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $errno = curl_errno($ch);
+    return array($errno, $html_code, $data);
+  }
+  
+  # Proxy to data
+  public function proxy_data(Request $request, Response $response, $vars) {
+    if (!$this->checkVersion($request)) {
+      return $this->error($response, self::MSG_VER_ERROR, self::MSG_VER_ERROR_LONG);
     }
 
-    # This server only supports the device_code response type
-    if($request->get('grant_type') != 'urn:ietf:params:oauth:grant-type:device_code') {
-      return $this->error($response, 'unsupported_grant_type', 'Only \'urn:ietf:params:oauth:grant-type:device_code\' is supported.');
+    $path = $vars['path'];
+    if($path == null) {
+      return $this->error($response, 'invalid_request', 'path empty');
     }
-
-    $device_code = $request->get('device_code');
-
-    #####################
-    ## RATE LIMITING
-
+    
+    $usage_point_id = $request->get('usage_point_id');
+    if($usage_point_id == null) {
+      return $this->error($response, 'invalid_request', 'Missing usage_point_id');
+    }
+    
+    if(!getenv('DISABLE_DATA_ENPOINT_AUTH')) {
+      $auth = $request->headers->get('Authorization');
+      if(!$auth) {
+        return $this->error($response, 'Unauthorized', 'Autorization missing', 404);
+      }    
+      $token = Cache::get('usage_point_access_token:'.$usage_point_id);
+      $refresh = Cache::get('usage_point_refresh_token:'.$usage_point_id);
+      if(!$token and !$refresh) {
+        return $this->error($response, 'Unauthorized', 'No tokens in database', 404);
+      }    
+      if(!$token and $refresh) {
+        return $this->error($response, 'invalid_token', 'Access token timed out', 403);
+      }
+      
+      $prefix = 'Bearer ';
+      if (substr($auth, 0, strlen($prefix)) == $prefix) {
+          $auth = substr($auth, strlen($prefix));
+      }     
+      if($token != $auth) {
+        return $this->error($response, 'Unauthorized', 'Bad access token', 404);
+      }
+    }
+    
+    $cip = $request->getClientIp();
     # Count the number of requests per minute
-    $bucket = 'ratelimit-'.floor(time()/60).'-'.$device_code;
+    $bucket = 'ratelimit-'.floor(time()/60).'-ip-'.$cip;
 
     if(Cache::get($bucket) >= getenv('LIMIT_REQUESTS_PER_MINUTE')) {
       return $this->error($response, 'slow_down');
@@ -365,22 +568,34 @@ class Controller {
     Cache::expire($bucket, 60);
     #####################
 
-    # Check if the device code is in the cache
-    $data = Cache::get($device_code);
+    $cg = Cache::get('client_credentials');
+    if (!$cg) {
+      $cg = self::refresh_client_credentials();
+      if (!$cg) {
+        return $this->error($response, 'Unauthorized', 'Cannot get client credentials', 404);
+      }
+    }
+    list($errno, $html_code, $data) = self::get_data($path, $cg, $request->query);
+    if ($html_code == 403) {
+      $cg = self::refresh_client_credentials();
+      if (!$cg) {
+        return $this->error($response, 'Unauthorized', 'Cannot get client credentials', 404);
+      }      
+      list($errno, $html_code, $data) = self::get_data($path, $cg, $request->query);
+    }
     
-    if(!$data) {
-      return $this->error($response, 'invalid_grant');
+    if (array_key_exists('content-type', self::$headers)) {
+      $response->headers->set('content-type', self::$headers['content-type']);
     }
-
-    if($data && $data->status == 'pending') {
-      return $this->error($response, 'authorization_pending');
-    } else if($data && $data->status == 'complete') {
-      # return the raw access token response from the real authorization server
-      Cache::delete($device_code);
-      return $this->success($response, $data->token_response);
-    } else {
-      return $this->error($response, 'invalid_grant');
+    
+    if ($errno == 0) {
+      $response->setContent($data);
     }
+    else {
+      return $this->error($response, 'invalid_request', 'cURL error ' . strval($errno));
+    }
+        
+    return $response;
   }
 
   private function _json($data) {
