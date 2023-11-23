@@ -534,6 +534,9 @@ class Controller {
           $auth = substr($auth, strlen($prefix));
       }     
       $token = Cache::get('access_token:'.$auth);
+      if(!$token) {
+        return $this->error($response, 'Unauthorized', 'Access token not found', 403);
+      }
       $usage_points_id_tab = explode(',', $token);
       if(!in_array($usage_point_id, $usage_points_id_tab)) {
         return $this->error($response, 'Unauthorized', 'Bad access token', 404);
