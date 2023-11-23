@@ -78,3 +78,4 @@ class VerifyUserCodeTest extends PHPUnit\Framework\TestCase {
   }
 
 }
+?>

@@ -53,3 +53,4 @@ class GenerateDeviceCodeTest extends PHPUnit\Framework\TestCase {
   }
 
 }
+?>
