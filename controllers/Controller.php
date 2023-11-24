@@ -210,15 +210,15 @@ class Controller {
       do {
         $access_token->access_token = bin2hex(random_bytes(32));
       } while(Cache::get('access_token:'.$access_token->access_token));
+      Cache::set('access_token:', $access_token->access_token, $usage_points_id, 12600);
       do {
         $access_token->refresh_token = bin2hex(random_bytes(32));
       } while(Cache::get('refresh_token:'.$access_token->access_token));
+      Cache::set('refresh_token:', $access_token->refresh_token, $usage_points_id, 4*365*24*60*60);
       $access_token->token_type = 'Bearer';
       $access_token->expires_in = '12600';
       $access_token->usage_points_id = $usage_points_id;
       $access_token->scope = '';
-      Cache::set('access_token:', $access_token->access_token, $usage_points_id, 12600);
-      Cache::set('refresh_token:', $access_token->refresh_token, $usage_points_id, 4*365*24*60*60);
       Cache::set($cache->device_code, [
         'status' => 'complete',
         'token_response' => $access_token
@@ -443,13 +443,14 @@ class Controller {
         return $this->error($response, 'invalid_request', 'refresh_token not corresponding to usage_points_id');
       }
 
-      $new_access_token = bin2hex(random_bytes(32));
-      Cache::set('access_token:'.$new_access_token, $usage_points_id, 12600);      
       $access_token = new stdClass();
-      $access_token->access_token = $new_access_token;
+      do {
+        $access_token->access_token = bin2hex(random_bytes(32));
+      } while(Cache::get('access_token:'.$access_token->access_token));
+      Cache::set('access_token:', $access_token->access_token, $usage_points_id, 12600);
+      $access_token->refresh_token = $old_refresh_token;
       $access_token->token_type = 'Bearer';
       $access_token->expires_in = '12600';
-      $access_token->refresh_token = $old_refresh_token;
       $access_token->scope = '';
       $response->setContent($this->_json($access_token));
       return $response;
