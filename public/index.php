@@ -26,3 +26,4 @@ $dispatcher = $router->getDispatcher();
 $request = Request::createFromGlobals();
 $response = $dispatcher->dispatch($request->getMethod(), $request->getPathInfo());
 $response->send();
+?>

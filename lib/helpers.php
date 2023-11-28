@@ -127,3 +127,4 @@ class Cache {
     self::$col->deleteMany([ 'key' => $key ]);
   }
 }
+?>

@@ -29,3 +29,4 @@ class RedirectTest extends PHPUnit\Framework\TestCase {
   }
 
 }
+?>

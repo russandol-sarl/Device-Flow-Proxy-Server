@@ -66,7 +66,7 @@ class Controller {
     }
   }
   
-  # A device submits a request here to generate a new device and user code
+  # A device submits a request here (POST) to generate a new device and user code
   public function generate_code(Request $request, Response $response) {
     # Params:
     # client_id
@@ -77,7 +77,7 @@ class Controller {
     }
     
     # client_id is required
-    $client_id = $request->get('client_id');
+    $client_id = $request->request->get('client_id');
     if($client_id == null) {
       return $this->error($response, 'invalid_request', 'Missing client_id');
     }
@@ -89,8 +89,8 @@ class Controller {
     $pkce_verifier = bin2hex(random_bytes(32));
     $cache = [
       'client_id' => $client_id,
-      'client_secret' => $request->get('client_secret'),
-      'scope' => $request->get('scope'),
+      'client_secret' => $request->request->get('client_secret'),
+      'scope' => $request->request->get('scope'),
       'device_code' => $device_code,
       'pkce_verifier' => $pkce_verifier,
     ];
@@ -114,12 +114,12 @@ class Controller {
     return $this->success($response, $data);
   }
 
-  # The user visits this page in a web browser
+  # The user visits this page in a web browser (GET)
   # This interface provides a prompt to enter a device code, which then begins the actual OAuth flow
   public function device(Request $request, Response $response) {
     $response->setContent(view('device', [
-      'code' => $request->get('code'),
-      'state' => $request->get('state'),
+      'code' => $request->query->get('code'),
+      'state' => $request->query->get('state'),
       'base_url' => $request->getBaseUrl()
     ]));
     return $response;
@@ -128,11 +128,11 @@ class Controller {
   # The browser submits a form that is a GET request to this route, which verifies
   # and looks up the user code, and then redirects to the real authorization server
   public function verify_code(Request $request, Response $response) {
-    if($request->get('code') == null) {
+    $user_code = $request->query->get('code');
+    if($user_code == null) {
       return $this->html_error($request, $response, 'invalid_request', 'Aucun code n\'a été entré');
     }
 
-    $user_code = $request->get('code');
     # Remove hyphens and convert to uppercase to make it easier for users to enter the code
     $user_code = strtoupper(str_replace('-', '', $user_code));
 
@@ -143,7 +143,7 @@ class Controller {
 
     $state = bin2hex(random_bytes(16));
 
-    $get_state = $request->get('state');
+    $get_state = $request->query->get('state');
     if(!empty($get_state)) {
       $state .= $get_state;
     }
@@ -178,18 +178,18 @@ class Controller {
   }
 
   # After the user logs in and authorizes the app on the real auth server, they will
-  # be redirected back to here. We'll need to exchange the auth code for an access token,
+  # be redirected back to here (GET). We'll need to exchange the auth code for an access token,
   # and then show a message that instructs the user to go back to their TV and wait.
   public function redirect(Request $request, Response $response) {
     # Check if error
-    $error = $request->get('error');
+    $error = $request->query->get('error');
     if($error) {
       return $this->html_error($request, $response, $error, $request->get('error_description'));
     }
 
-    $get_state = $request->get('state');
+    $get_state = $request->query->get('state');
     # Verify input params
-    if($get_state == false || $request->get('code') == false) {
+    if($get_state == false || $request->query->get('code') == false) {
       return $this->html_error($request, $response, 'Invalid Request', 'Des paramètres manquent dans la requête');
     }
 
@@ -202,22 +202,23 @@ class Controller {
     $cache = Cache::get($state->user_code);
     
     if (strtoupper(getenv('FLOW')) != 'DEVICE') {      
-      $usage_points_id = $request->get('usage_point_id');
-      $usage_points_id_tab = explode(',', $usage_points_id);
+      $usage_points_id = $request->query->get('usage_point_id');
       if($usage_points_id == false) {
         return $this->html_error($request, $response, 'Invalid Request', 'Le paramètre usage_point_id manque dans la requête');
       }
       $access_token = new stdClass();
-      $access_token->access_token = bin2hex(random_bytes(32));
+      do {
+        $access_token->access_token = bin2hex(random_bytes(32));
+      } while(Cache::get('access_token:'.$access_token->access_token));
+      Cache::set('access_token:', $access_token->access_token, $usage_points_id, 12600);
+      do {
+        $access_token->refresh_token = bin2hex(random_bytes(32));
+      } while(Cache::get('refresh_token:'.$access_token->access_token));
+      Cache::set('refresh_token:', $access_token->refresh_token, $usage_points_id, 4*365*24*60*60);
       $access_token->token_type = 'Bearer';
       $access_token->expires_in = '12600';
-      $access_token->refresh_token = bin2hex(random_bytes(32));
       $access_token->usage_points_id = $usage_points_id;
       $access_token->scope = '';
-      foreach($usage_points_id_tab as $one_usage_point_id) {
-        Cache::set('usage_point_access_token:'.$one_usage_point_id, $access_token->access_token, 12600);
-        Cache::set('usage_point_refresh_token:'.$one_usage_point_id, $access_token->refresh_token, 4*365*24*60*60);
-      }
       Cache::set($cache->device_code, [
         'status' => 'complete',
         'token_response' => $access_token
@@ -232,7 +233,7 @@ class Controller {
 
       $params = [
         'grant_type' => 'authorization_code',
-        'code' => $request->get('code'),
+        'code' => $request->query->get('code'),
         'client_id' => $cache->client_id,
       ];
       $redirect_uri = getenv('REDIRECT_URI');
@@ -351,7 +352,7 @@ class Controller {
     return $response;
   }
 
-  # Meanwhile, the device is continually posting to this route waiting for the user to
+  # Meanwhile, the device is continually posting (POST) to this route waiting for the user to
   # approve the request. Once the user approves the request, this route returns the access token.
   # In addition to the standard OAuth error responses defined in https://tools.ietf.org/html/rfc6749#section-4.2.2.1
   # the server should return: authorization_pending and slow_down
@@ -360,17 +361,17 @@ class Controller {
       return $this->error($response, self::MSG_VER_ERROR, self::MSG_VER_ERROR_LONG);
     }
 
-    $client_id = $request->get('client_id');
-    if($client_id == null || $request->get('grant_type') == null) {
+    $client_id = $request->request->get('client_id');
+    if($client_id == null || $request->request->get('grant_type') == null) {
       return $this->error($response, 'invalid_request', 'Missing client_id');
     }
     
     # This server supports the device_code response type
-    if($request->get('grant_type') == 'urn:ietf:params:oauth:grant-type:device_code') {
-      if($request->get('device_code') == null) {
+    if($request->request->get('grant_type') == 'urn:ietf:params:oauth:grant-type:device_code') {
+      if($request->request->get('device_code') == null) {
         return $this->error($response, 'invalid_request', 'Missing device_code');
       }
-      $device_code = $request->get('device_code');
+      $device_code = $request->request->get('device_code');
 
       #####################
       ## RATE LIMITING
@@ -406,15 +407,15 @@ class Controller {
     }
     // To test: 
     // curl -X POST url/device/token -H 'Content-Type: application/x-www-form-urlencoded' -d 'grant_type=refresh_token&client_id=xxxx'
-    elseif($request->get('grant_type') == 'refresh_token') {
+    elseif($request->request->get('grant_type') == 'refresh_token') {
       if($client_id != getenv('CLIENT_ID')) {
         return $this->error($response, 'invalid_request', 'Bad client_id');
       }
-      $usage_points_id = $request->get('usage_points_id');
+      $usage_points_id = $request->request->get('usage_points_id');
       if($usage_points_id == null) {
         return $this->error($response, 'invalid_request', 'Missing usage_points_id');
       }
-      $refresh_token = $request->get('refresh_token');
+      $refresh_token = $request->request->get('refresh_token');
       if($refresh_token == null) {
         return $this->error($response, 'invalid_request', 'Missing refresh_token');
       }
@@ -434,33 +435,25 @@ class Controller {
       Cache::expire($bucket, 60);
       #####################
 
-      $usage_points_id_tab = explode(',', $usage_points_id);
-      $new_access_token = bin2hex(random_bytes(32));
-      foreach($usage_points_id_tab as $one_usage_point_id) {
-        # Check if the refresh_token is in the cache
-        $old_refresh_token = Cache::get('usage_point_refresh_token:'.$one_usage_point_id);
-        if (!$old_refresh_token) {
-          return $this->error($response, 'invalid_request', 'refresh_token not found in database');
-        }
-        if ($old_refresh_token != $refresh_token) {
-          return $this->error($response, 'invalid_request', 'Bad refresh_token');
-        }
-        Cache::set('usage_point_access_token:'.$one_usage_point_id, $new_access_token, 12600);
+      $old_refresh_token = Cache::get('refresh_token:'.$refresh_token);
+      if (!$old_refresh_token) {
+        return $this->error($response, 'invalid_request', 'refresh_token not found in database');
       }
-      
-      if($old_refresh_token) {      
-        $access_token = new stdClass();
-        $access_token->access_token = $new_access_token;
-        $access_token->token_type = 'Bearer';
-        $access_token->expires_in = '12600';
-        $access_token->refresh_token = $old_refresh_token;
-        $access_token->scope = '';
-        $response->setContent($this->_json($access_token));
-        return $response;
+      if ($old_refresh_token != $usage_points_id) {
+        return $this->error($response, 'invalid_request', 'refresh_token not corresponding to usage_points_id');
       }
-      else {
-        return $this->error($response, 'invalid_request', 'usage_points_id empty of corrupted');
-      }
+
+      $access_token = new stdClass();
+      do {
+        $access_token->access_token = bin2hex(random_bytes(32));
+      } while(Cache::get('access_token:'.$access_token->access_token));
+      Cache::set('access_token:', $access_token->access_token, $usage_points_id, 12600);
+      $access_token->refresh_token = $old_refresh_token;
+      $access_token->token_type = 'Bearer';
+      $access_token->expires_in = '12600';
+      $access_token->scope = '';
+      $response->setContent($this->_json($access_token));
+      return $response;
     }
     else {
       return $this->error($response, 'unsupported_grant_type', 'Only \'urn:ietf:params:oauth:grant-type:device_code\' and refresh_token are supported.');
@@ -516,7 +509,7 @@ class Controller {
     return array($errno, $html_code, $data);
   }
   
-  # Proxy to data
+  # Proxy to data (GET)
   public function proxy_data(Request $request, Response $response, $vars) {
     if (!$this->checkVersion($request)) {
       return $this->error($response, self::MSG_VER_ERROR, self::MSG_VER_ERROR_LONG);
@@ -527,7 +520,7 @@ class Controller {
       return $this->error($response, 'invalid_request', 'path empty');
     }
     
-    $usage_point_id = $request->get('usage_point_id');
+    $usage_point_id = $request->query->get('usage_point_id');
     if($usage_point_id == null) {
       return $this->error($response, 'invalid_request', 'Missing usage_point_id');
     }
@@ -537,20 +530,16 @@ class Controller {
       if(!$auth) {
         return $this->error($response, 'Unauthorized', 'Autorization missing', 404);
       }    
-      $token = Cache::get('usage_point_access_token:'.$usage_point_id);
-      $refresh = Cache::get('usage_point_refresh_token:'.$usage_point_id);
-      if(!$token and !$refresh) {
-        return $this->error($response, 'Unauthorized', 'No tokens in database', 404);
-      }    
-      if(!$token and $refresh) {
-        return $this->error($response, 'invalid_token', 'Access token timed out', 403);
-      }
-      
       $prefix = 'Bearer ';
       if (substr($auth, 0, strlen($prefix)) == $prefix) {
           $auth = substr($auth, strlen($prefix));
       }     
-      if($token != $auth) {
+      $token = Cache::get('access_token:'.$auth);
+      if(!$token) {
+        return $this->error($response, 'Unauthorized', 'Access token not found', 403);
+      }
+      $usage_points_id_tab = explode(',', $token);
+      if(!in_array($usage_point_id, $usage_points_id_tab)) {
         return $this->error($response, 'Unauthorized', 'Bad access token', 404);
       }
     }
@@ -603,3 +592,4 @@ class Controller {
   }
 
 }
+?>
