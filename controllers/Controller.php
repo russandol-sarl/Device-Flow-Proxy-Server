@@ -210,11 +210,11 @@ class Controller {
       do {
         $access_token->access_token = bin2hex(random_bytes(32));
       } while(Cache::get('access_token:'.$access_token->access_token));
-      Cache::set('access_token:', $access_token->access_token, $usage_points_id, 12600);
+      Cache::set('access_token:'.$access_token->access_token, $usage_points_id, 12600);
       do {
         $access_token->refresh_token = bin2hex(random_bytes(32));
-      } while(Cache::get('refresh_token:'.$access_token->access_token));
-      Cache::set('refresh_token:', $access_token->refresh_token, $usage_points_id, 4*365*24*60*60);
+      } while(Cache::get('refresh_token:'.$access_token->refresh_token));
+      Cache::set('refresh_token:'.$access_token->refresh_token, $usage_points_id, 4*365*24*60*60);
       $access_token->token_type = 'Bearer';
       $access_token->expires_in = '12600';
       $access_token->usage_points_id = $usage_points_id;
@@ -447,7 +447,7 @@ class Controller {
       do {
         $access_token->access_token = bin2hex(random_bytes(32));
       } while(Cache::get('access_token:'.$access_token->access_token));
-      Cache::set('access_token:', $access_token->access_token, $usage_points_id, 12600);
+      Cache::set('access_token:'.$access_token->access_token, $usage_points_id, 12600);
       $access_token->refresh_token = $old_refresh_token;
       $access_token->token_type = 'Bearer';
       $access_token->expires_in = '12600';
