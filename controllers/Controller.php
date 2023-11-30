@@ -436,11 +436,11 @@ class Controller {
       Cache::expire($bucket, 60);
       #####################
 
-      $old_refresh_token = Cache::get('refresh_token:'.$refresh_token);
+      $old_usage_points_id = Cache::get('refresh_token:'.$refresh_token);
       if (!$old_refresh_token) {
         return $this->error($response, 'invalid_request', 'refresh_token not found in database');
       }
-      if ($old_refresh_token != $usage_points_id) {
+      if ($old_usage_points_id != $usage_points_id) {
         return $this->error($response, 'invalid_request', 'refresh_token not corresponding to usage_points_id');
       }
 
@@ -449,7 +449,7 @@ class Controller {
         $access_token->access_token = bin2hex(random_bytes(32));
       } while(Cache::get('access_token:'.$access_token->access_token));
       Cache::set('access_token:'.$access_token->access_token, $usage_points_id, self::ACCESS_EXPIRE);
-      $access_token->refresh_token = $old_refresh_token;
+      $access_token->refresh_token = $refresh_token;
       $access_token->token_type = 'Bearer';
       $access_token->expires_in = strval(self::ACCESS_EXPIRE);
       $access_token->scope = '';
