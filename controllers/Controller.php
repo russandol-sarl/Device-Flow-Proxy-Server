@@ -437,7 +437,7 @@ class Controller {
       #####################
 
       $old_usage_points_id = Cache::get('refresh_token:'.$refresh_token);
-      if (!$old_refresh_token) {
+      if (!$old_usage_points_id) {
         return $this->error($response, 'invalid_request', 'refresh_token not found in database');
       }
       if ($old_usage_points_id != $usage_points_id) {
@@ -535,11 +535,11 @@ class Controller {
       if (substr($auth, 0, strlen($prefix)) == $prefix) {
           $auth = substr($auth, strlen($prefix));
       }     
-      $token = Cache::get('access_token:'.$auth);
-      if(!$token) {
+      $usage_points_id_in_db = Cache::get('access_token:'.$auth);
+      if(!$usage_points_id_in_db) {
         return $this->error($response, 'Unauthorized', 'Access token not found', 403);
       }
-      $usage_points_id_tab = explode(',', $token);
+      $usage_points_id_tab = explode(',', $usage_points_id_in_db);
       if(!in_array($usage_point_id, $usage_points_id_tab)) {
         return $this->error($response, 'Unauthorized', 'Bad access token', 404);
       }
