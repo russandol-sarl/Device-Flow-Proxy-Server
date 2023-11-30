@@ -5,6 +5,7 @@ use Symfony\Component\HttpFoundation\Response;
 class Controller {
   const MSG_VER_ERROR = 'version_mismatch';
   const MSG_VER_ERROR_LONG = 'Votre version du plugin est trop ancienne, veuillez la mettre à jour';
+  const ACCESS_EXPIRE = 12600;
 
   #TODO varier erreur 400 (403 pour token invalide ? Cf. plugin.py)
   private function error(Response $response, $error, $error_description=false, $errno=400) {
@@ -184,7 +185,7 @@ class Controller {
     # Check if error
     $error = $request->query->get('error');
     if($error) {
-      return $this->html_error($request, $response, $error, $request->get('error_description'));
+      return $this->html_error($request, $response, $error, $request->query->get('error_description'));
     }
 
     $get_state = $request->query->get('state');
@@ -210,13 +211,13 @@ class Controller {
       do {
         $access_token->access_token = bin2hex(random_bytes(32));
       } while(Cache::get('access_token:'.$access_token->access_token));
-      Cache::set('access_token:'.$access_token->access_token, $usage_points_id, 12600);
+      Cache::set('access_token:'.$access_token->access_token, $usage_points_id, self::ACCESS_EXPIRE);
       do {
         $access_token->refresh_token = bin2hex(random_bytes(32));
       } while(Cache::get('refresh_token:'.$access_token->refresh_token));
       Cache::set('refresh_token:'.$access_token->refresh_token, $usage_points_id, 4*365*24*60*60);
       $access_token->token_type = 'Bearer';
-      $access_token->expires_in = '12600';
+      $access_token->expires_in = strval(self::ACCESS_EXPIRE);
       $access_token->usage_points_id = $usage_points_id;
       $access_token->scope = '';
       Cache::set($cache->device_code, [
@@ -447,10 +448,10 @@ class Controller {
       do {
         $access_token->access_token = bin2hex(random_bytes(32));
       } while(Cache::get('access_token:'.$access_token->access_token));
-      Cache::set('access_token:'.$access_token->access_token, $usage_points_id, 12600);
+      Cache::set('access_token:'.$access_token->access_token, $usage_points_id, self::ACCESS_EXPIRE);
       $access_token->refresh_token = $old_refresh_token;
       $access_token->token_type = 'Bearer';
-      $access_token->expires_in = '12600';
+      $access_token->expires_in = strval(self::ACCESS_EXPIRE);
       $access_token->scope = '';
       $response->setContent($this->_json($access_token));
       return $response;
