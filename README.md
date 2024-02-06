@@ -13,8 +13,8 @@ Installation
 ------------
 
 ```
-composer install
 cp .env.example .env
+composer install
 ```
 
 In the `.env` file, fill out the required variables and don't forget to change APP_SECRET to another random string.
