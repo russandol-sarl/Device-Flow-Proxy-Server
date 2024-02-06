@@ -1,5 +1,9 @@
-<?php $this->layout('layout', ['title' => 'Entrez le code', 'base_url' => $base_url]); ?>
+{# templates/index.html.twig #}
+{% extends 'layout.html.twig' %}
 
+{% block title %}Entrez le code{% endblock %}
+
+{% block content %}
 <p>Enedis gère le réseau d’électricité jusqu’au compteur d’électricité. Cette page a pour but de lancer le consentement vous permettant d'autoriser Enedis à transmettre vos données Linky au plugin DomoticzLinky.</p>
 
 <p>Pour donner votre autorisation, vous devez créer un compte personnel <a href="https://www.enedis.fr">Enedis</a>. Il vous permet également de suivre et gérer vos données de consommation et/ou de production en fonction de votre service d’électricité. Munissez-vous de votre facture d’électricité pour créer votre espace si vous ne l'avez pas déjà fait.</p>
@@ -8,18 +12,19 @@
 
 <p>En cliquant sur le bouton "Envoyer" ci-dessous, vous allez accéder à votre compte personnel Enedis où vous pourrez donner votre accord pour qu’Enedis transmette vos données au plugin DomoticzLinky.</p>
 
-<?php if($code): ?>
+{% if code %}
 <p>Veuillez confirmer que le code ci-dessous correspond au code donné dans les logs de Domoticz (dans Configuration / Log) par le plugin DomoticzLinky.</p>
-<?php else: ?>
+{% else %}
 <p>Pour continuer, entrez ci-dessous le code obtenu dans les logs de Domoticz (dans Configuration / Log).</p>
-<?php endif ?>
+{% endif %}
 
-<form action="<?= $base_url ?>/auth/verify_code" method="get">
-  <input type="text" name="code" placeholder="XXXX-XXXX" id="user_code" value="<?= $code ?>" autocomplete="off">
-  <input type="hidden" name="state" value="<?= $state ?>">
+<form action="{{ url('verify_code') }}" method="get">
+  <input type="text" name="code" placeholder="XXXX-XXXX" id="user_code" value="{{ code }}" autocomplete="off">
+  <input type="hidden" name="state" value="{{ state }}">
   <input type="submit">
 </form>
 
 <script>
 document.getElementById("user_code").focus();
 </script>
+{% endblock %}

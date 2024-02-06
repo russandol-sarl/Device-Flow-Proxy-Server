@@ -1,0 +1,12 @@
+{# templates/index.html.twig #}
+{% extends 'layout.html.twig' %}
+
+{% block title %}Consentement obtenu{% endblock %}
+
+{% block content %}
+<h2>Le consentement a bien été obtenu pour le plugin DomoticzLinky ! Vous pouvez fermer cette page et retourner sur Domoticz.</h2>
+
+<script>
+window.history.replaceState({}, false, "{{ url('device') }}"');
+</script>
+{% endblock %}

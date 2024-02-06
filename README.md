@@ -17,13 +17,11 @@ composer install
 cp .env.example .env
 ```
 
-In the `.env` file, fill out the required variables.
+In the `.env` file, fill out the required variables and don't forget to change APP_SECRET to another random string.
 
 You will need to install MongoDB if it is not already on your system, or point to an existing MongoDB server in the config file.
 
 Define your OAuth server's authorization endpoint and token endpoint URL, and optionaly the client_secret, this way it will be kept private between your web server and Enedis, otherwise the device must provide it during requests.
-
-Set FLOW to DEVICE if you want to use the device authorization flow grant flow, otherwise client credentials flow will be used.
 
 
 Usage
@@ -62,6 +60,10 @@ The response will contain the URL the user should visit and the code they should
 The device should instruct the user to visit the URL and enter the code, or can provide a full link that pre-fills the code for the user in case the device is displaying a QR code.
 
 `http://localhost:8080/device?code=248707`
+
+If the servers are using the client_credentials flow, add a state parameter ending with "-cg"
+
+`http://localhost:8080/device?code=248707&state=-cg`
 
 The device should then poll the token endpoint at the interval provided, making a POST request like the below:
 
@@ -102,7 +104,7 @@ or if the servers are using the client_credentials flow:
 ```
 curl -X POST http://localhost:8080/device/token -d grant_type=refresh_token \
   -d client_id=1234567890 \
-  -d usage_points_id=1234567890abcd \
+  -d usage_point_id=1234567890abcd \
   -d refresh_token=QcMhancv1wPyi8uwnkzcTNyd397oC7K0La8otPcssYMpXT
 ```
 

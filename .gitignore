@@ -1,5 +1,6 @@
 .env
 vendor/
+var/
 .DS_Store
 config.php
 .phpunit.result.cache

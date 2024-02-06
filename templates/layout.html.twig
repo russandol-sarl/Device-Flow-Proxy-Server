@@ -1,9 +1,10 @@
+{# templates/layout.html.twig #}
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <title><?= $title ?></title>
-    <link rel="stylesheet" type="text/css" href="<?= $base_url ?>/assets/normalize.css" media="screen">
-    <link rel="stylesheet" type="text/css" href="<?= $base_url ?>/assets/cayman.css" media="screen">
+  <title>{% block title %}{% endblock %}</title>
+    <link rel="stylesheet" type="text/css" href="{{ asset('assets/normalize.css') }}" media="screen">
+    <link rel="stylesheet" type="text/css" href="{{ asset('assets/cayman.css') }}" media="screen">
   <meta name="viewport" content="width=device-width, initial-scale=1">
 </head>
 <body>
@@ -15,7 +16,7 @@
 <section class="main-content">
     
 <div id="page-content">
-  <?= $this->section('content') ?>
+                {% block content %}{% endblock %}
 </div>
 
 <footer class="site-footer">
