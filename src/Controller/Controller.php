@@ -12,9 +12,10 @@ use App\Util\Cache;
 class Controller extends AbstractController {
   const MSG_VER_ERROR = 'version_mismatch';
   const MSG_VER_ERROR_LONG = 'Votre version du plugin est trop ancienne, veuillez la mettre à jour';
+  const ACCESS_EXPIRE = 12600
   
   #TODO varier erreur 400 (403 pour token invalide ? Cf. plugin.py)
-  private function error($error, $error_description=false, $errno=400) {
+  private function error($error, $error_description=false, $errno = Response::HTTP_BAD_REQUEST) {
     $data = [
       'error' => $error
     ];
@@ -22,14 +23,12 @@ class Controller extends AbstractController {
       $data['error_description'] = $error_description;
     }
 
-    $response = new Response();
+    $response = new JsonResponse($data);
     $response->setStatusCode($errno);
-    $response->setContent($this->_json($data));
-    $response->headers->set('Content-Type', 'application/json');
     return $response;
   }
 
-  private function html_error($error, $error_description, $errno = 400) {
+  private function html_error($error, $error_description, $errno = Response::HTTP_BAD_REQUEST) {
     return $this->render('error.html.twig', [
       'error' => $error,
       'error_description' => $error_description
@@ -37,9 +36,7 @@ class Controller extends AbstractController {
   }
 
   private function success($data) {
-    $response = new Response();
-    $response->setContent($this->_json($data));
-    $response->headers->set('Content-Type', 'application/json');
+    $response = new JsonResponse($data);
     return $response;
   }
 
@@ -183,7 +180,7 @@ class Controller extends AbstractController {
 
     $authURL = $this->getParameter('app_authorization_endpoint') . '?' . http_build_query($query);
 
-    $response->setStatusCode(302);
+    $response->setStatusCode(Response::HTTP_FOUND);
     $response->headers->set('Location', $authURL);
     return $response;
   }
@@ -196,7 +193,7 @@ class Controller extends AbstractController {
     # Check if error    
     $error = $request->query->get('error');
     if($error) {
-      return $this->html_error($error, $request->get('error_description'));
+      return $this->html_error($error, $request->query->get('error_description'));
     }
 
     $get_state = $request->query->get('state');
@@ -224,15 +221,15 @@ class Controller extends AbstractController {
       do {
         $access_token->access_token = bin2hex(random_bytes(32));
       } while($cache->get('access_token:'.$access_token->access_token));
+      $cache->set('access_token:'.$access_token->access_token, $usage_points_id, self::ACCESS_EXPIRE);
       do {
         $access_token->refresh_token = bin2hex(random_bytes(32));
-      } while($cache->get('refresh_token:'.$access_token->access_token));
+      } while($cache->get('refresh_token:'.$access_token->refresh_token));
+      $cache->set('refresh_token:'.$access_token->refresh_token, $usage_points_id, 4*365*24*60*60);
       $access_token->token_type = 'Bearer';
-      $access_token->expires_in = '12600';
+      $access_token->expires_in = self::ACCESS_EXPIRE;
       $access_token->usage_points_id = $usage_points_id;
       $access_token->scope = '';
-      $cache->set('access_token:', $access_token->access_token, $usage_points_id, 12600);
-      $cache->set('refresh_token:', $access_token->refresh_token, $usage_points_id, 4*365*24*60*60);
       $cache->set($cache_result->device_code, [
         'status' => 'complete',
         'token_response' => $access_token
@@ -450,23 +447,25 @@ class Controller extends AbstractController {
       $cache->expire($bucket, 60);
       #####################
       
-      $old_refresh_token = $cache->get('refresh_token:'.$refresh_token);
-      if (!$old_refresh_token) {
+      $old_usage_points_id = $cache->get('refresh_token:'.$refresh_token);
+      if (!$old_usage_points_id) {
         return $this->error('invalid_request', 'refresh_token not found in database');
       }
-      if ($old_refresh_token != $usage_points_id) {
+      if ($old_usage_points_id != $usage_points_id) {
         return $this->error('invalid_request', 'refresh_token not corresponding to usage_points_id');
       }
 
-      $new_access_token = bin2hex(random_bytes(32));
-      $cache->set('access_token:'.$new_access_token, $usage_points_id, 12600);      
       $access_token = new stdClass();
+      do {
+        $access_token->access_token = bin2hex(random_bytes(32));
+      } while($cache->get('access_token:'.$access_token->access_token));
+      $cache->set('access_token:'.$access_token->access_token, $usage_points_id, self::ACCESS_EXPIRE);
+      $access_token->refresh_token = $refresh_token;
       $access_token->access_token = $new_access_token;
       $access_token->token_type = 'Bearer';
-      $access_token->expires_in = '12600';
-      $access_token->refresh_token = $old_refresh_token;
+      $access_token->expires_in = self::ACCESS_EXPIRE;
       $access_token->scope = '';
-      $response->setContent($this->_json($access_token));
+      $response = new JsonResponse($access_token);
       return $response;
     }
     else {
@@ -544,16 +543,19 @@ class Controller extends AbstractController {
     if(!$this->getParameter('app_disable_data_enpoint_auth')) {
       $auth = $request->headers->get('Authorization');
       if(!$auth) {
-        return $this->error('Unauthorized', 'Autorization missing', 404);
+        return $this->error('Unauthorized', 'Autorization missing', Response::HTTP_NOT_FOUND);
       }    
       $prefix = 'Bearer ';
       if (substr($auth, 0, strlen($prefix)) == $prefix) {
           $auth = substr($auth, strlen($prefix));
       }     
-      $token = $cache->get('access_token:'.$auth);
-      $usage_points_id_tab = explode(',', $token);
+      $usage_points_id_in_db = $cache->get('access_token:'.$auth);
+      if(!$usage_points_id_in_db) {
+        return $this->error('Unauthorized', 'Access token not found', Response::HTTP_FORBIDDEN);
+      }
+      $usage_points_id_tab = explode(',', $usage_points_id_in_db);
       if(!in_array($usage_point_id, $usage_points_id_tab)) {
-        return $this->error('Unauthorized', 'Bad access token', 404);
+        return $this->error('Unauthorized', 'Bad access token', Response::HTTP_NOT_FOUND);
       }
     }
     
@@ -574,14 +576,14 @@ class Controller extends AbstractController {
     if (!$cg) {
       $cg = self::refresh_client_credentials();
       if (!$cg) {
-        return $this->error('Unauthorized', 'Cannot get client credentials', 404);
+        return $this->error('Unauthorized', 'Cannot get client credentials', Response::HTTP_NOT_FOUND);
       }
     }
     list($errno, $html_code, $data) = self::get_data($path, $cg, $request->query);
     if ($html_code == 403) {
       $cg = self::refresh_client_credentials();
       if (!$cg) {
-        return $this->error('Unauthorized', 'Cannot get client credentials', 404);
+        return $this->error('Unauthorized', 'Cannot get client credentials', Response::HTTP_NOT_FOUND);
       }      
       list($errno, $html_code, $data) = self::get_data($path, $cg, $request->query);
     }
@@ -597,10 +599,6 @@ class Controller extends AbstractController {
       $response->setContent($data);        
       return $response;
     }
-  }
-
-  private function _json($data) {
-    return json_encode($data, JSON_PRETTY_PRINT+JSON_UNESCAPED_SLASHES)."\n";
   }
 
 }
