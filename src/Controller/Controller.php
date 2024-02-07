@@ -461,7 +461,6 @@ class Controller extends AbstractController {
       } while($cache->get('access_token:'.$access_token->access_token));
       $cache->set('access_token:'.$access_token->access_token, $usage_points_id, self::ACCESS_EXPIRE);
       $access_token->refresh_token = $refresh_token;
-      $access_token->access_token = $new_access_token;
       $access_token->token_type = 'Bearer';
       $access_token->expires_in = self::ACCESS_EXPIRE;
       $access_token->scope = '';
