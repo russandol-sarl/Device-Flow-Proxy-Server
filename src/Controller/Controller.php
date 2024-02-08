@@ -5,6 +5,7 @@ namespace App\Controller;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\Routing\Annotation\Route;
 use App\Util\Helpers;
 use App\Util\Cache;
@@ -12,8 +13,8 @@ use App\Util\Cache;
 class Controller extends AbstractController {
   const MSG_VER_ERROR = 'version_mismatch';
   const MSG_VER_ERROR_LONG = 'Votre version du plugin est trop ancienne, veuillez la mettre à jour';
-  const ACCESS_EXPIRE = 12600
-  
+  const ACCESS_EXPIRE = 12600;
+
   #TODO varier erreur 400 (403 pour token invalide ? Cf. plugin.py)
   private function error($error, $error_description=false, $errno = Response::HTTP_BAD_REQUEST) {
     $data = [
@@ -49,7 +50,7 @@ class Controller extends AbstractController {
   # Check version of env file if defined against user agent header
   private function checkVersion(Request $request) {
     $versionMin = $this->getParameter('app_version_min');
-    if($versionMin) {      
+    if($versionMin) {
       $userAgent = $request->headers->get('User-Agent');
       $pieces = explode('/', $userAgent);
       # check version
@@ -65,11 +66,11 @@ class Controller extends AbstractController {
       return true;
     }
   }
-  
+
   private function connectCache() {
     return new Cache($this->getParameter('app_mongodb_db'), $this->getParameter('app_mongodb_user'), $this->getParameter('app_mongodb_password'), $this->getParameter('app_mongodb_address'), $this->getParameter('app_mongodb_port'));
   }
-  
+
   # A device submits a request here (POST) to generate a new device and user code
   #[Route('/device/code', name: 'generate_code', methods: ['POST'])]
   public function generate_code(Request $request): Response {
@@ -80,7 +81,7 @@ class Controller extends AbstractController {
     if (!$this->checkVersion($request)) {
       return $this->error(self::MSG_VER_ERROR, self::MSG_VER_ERROR_LONG);
     }
-    
+
     # client_id is required
     $client_id = $request->request->get('client_id');
     if($client_id == null) {
@@ -100,7 +101,7 @@ class Controller extends AbstractController {
       'pkce_verifier' => $pkce_verifier,
     ];
     $user_code = random_alpha_string(4).'-'.random_alpha_string(4);
-    
+
     $cache = $this->connectCache();
     $cache->set(str_replace('-', '', $user_code), $cache, 300); # store without the hyphen
 
@@ -190,7 +191,7 @@ class Controller extends AbstractController {
   # and then show a message that instructs the user to go back to their TV and wait.
   #[Route('/auth/redirect', name: 'myredirect', methods: ['GET'])]
   public function myredirect(Request $request): Response {
-    # Check if error    
+    # Check if error
     $error = $request->query->get('error');
     if($error) {
       return $this->html_error($error, $request->query->get('error_description'));
@@ -210,7 +211,7 @@ class Controller extends AbstractController {
 
     # Look up the info from the user code provided in the state parameter
     $cache_result = $cache->get($state->user_code);
-    
+
     $flow = $this->getParameter('app_flow');
     if (!$flow || (strtoupper($flow) != 'DEVICE')) {
       $usage_points_id = $request->query->get('usage_point_id');
@@ -276,7 +277,7 @@ class Controller extends AbstractController {
         $cache->delete($cache_result->device_code);
         return $this->html_error('Error Logging In', 'Il y a eu une erreur en essayant d\'obtenir un jeton d\'accès du service <p><pre>'.$token_response.'</pre></p>');
       }
-      
+
       // pass other parameters as json attributes
       foreach ($request->request as $key => $value) {
         if (($key != "state") and ($key != 'code')) {
@@ -300,11 +301,11 @@ class Controller extends AbstractController {
   }
 
   private static $headers;
-  
+
   private static function resetHeaders() {
     self::$headers = [];
   }
-  
+
   private static function setHeader($curl, $header) {
     $len = strlen($header);
     $header = explode(':', $header, 2);
@@ -315,16 +316,16 @@ class Controller extends AbstractController {
 
     return $len;
   }
-  
+
   # Proxy to TOKEN_ENDPOINT
   #[Route('/device/proxy', name: 'proxy', methods: ['POST'])]
   public function proxy(Request $request): Response {
     if (!$this->checkVersion($request)) {
       return $this->error(self::MSG_VER_ERROR, self::MSG_VER_ERROR_LONG);
     }
-    
+
     $params = $request->request->all();
-  
+
     $client_secret = $this->getParameter('app_client_secret');
     if($client_secret) {
       $params['client_secret'] = $client_secret;
@@ -340,7 +341,7 @@ class Controller extends AbstractController {
     else {
         $tokenURL = env('TOKEN_ENDPOINT');
     }
-    
+
     self::resetHeaders();
 
     $ch = curl_init();
@@ -352,11 +353,11 @@ class Controller extends AbstractController {
     curl_setopt($ch, CURLOPT_HEADERFUNCTION, '\App\Controller\Controller::setHeader');
 
     $token_response = curl_exec($ch);
-    
+
     if (array_key_exists('content-type', self::$headers)) {
       $response->headers->set('content-type', self::$headers['content-type']);
     }
-    
+
     $response->setContent($token_response);
     return $response;
   }
@@ -375,9 +376,9 @@ class Controller extends AbstractController {
     if($client_id == null || $request->request->get('grant_type') == null) {
       return $this->error('invalid_request', 'Missing client_id');
     }
-    
+
     $cache = $this->connectCache();
-    
+
     # This server supports the device_code response type
     if($request->request->get('grant_type') == 'urn:ietf:params:oauth:grant-type:device_code') {
       if($request->request->get('device_code') == null) {
@@ -402,7 +403,7 @@ class Controller extends AbstractController {
 
       # Check if the device code is in the cache
       $data = $cache->get($device_code);
-      
+
       if(!$data) {
         return $this->error('invalid_grant', 'device_code not found in db');
       }
@@ -417,7 +418,7 @@ class Controller extends AbstractController {
         return $this->error('invalid_grant', 'Authorization unsuccessful');
       }
     }
-    // To test: 
+    // To test:
     // curl -X POST url/device/token -H 'Content-Type: application/x-www-form-urlencoded' -d 'grant_type=refresh_token&client_id=xxxx'
     elseif($request->request->get('grant_type') == 'refresh_token') {
       if($client_id != $this->getParameter('app_client_id')) {
@@ -446,7 +447,7 @@ class Controller extends AbstractController {
       $cache->incr($bucket);
       $cache->expire($bucket, 60);
       #####################
-      
+
       $old_usage_points_id = $cache->get('refresh_token:'.$refresh_token);
       if (!$old_usage_points_id) {
         return $this->error('invalid_request', 'refresh_token not found in database');
@@ -507,9 +508,9 @@ class Controller extends AbstractController {
   # get json data with cURL
   private function get_data($path, $cg, $query){
     $query2 = http_build_query(array_slice($query->all(), 1));
-    
-    self::resetHeaders();    
-    
+
+    self::resetHeaders();
+
     $ch = curl_init();
     curl_setopt($ch, CURLOPT_URL, $this->getParameter('app_data_endpoint') . '/' . $path. '?' . $query2);
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
@@ -521,7 +522,7 @@ class Controller extends AbstractController {
     $errno = curl_errno($ch);
     return array($errno, $html_code, $data);
   }
-  
+
   # Proxy to data (GET)
   #[Route('/data/proxy/{path}', name: 'proxy_data', methods: ['GET'], requirements: ['path' => '.+'])]
   public function proxy_data(Request $request, string $path): Response {
@@ -532,22 +533,22 @@ class Controller extends AbstractController {
     if($path == null) {
       return $this->error('invalid_request', 'path empty');
     }
-    
+
     $usage_point_id = $request->query->get('usage_point_id');
     if($usage_point_id == null) {
       return $this->error('invalid_request', 'Missing usage_point_id');
     }
-    
+
     $cache = $this->connectCache();
     if(!$this->getParameter('app_disable_data_enpoint_auth')) {
       $auth = $request->headers->get('Authorization');
       if(!$auth) {
         return $this->error('Unauthorized', 'Autorization missing', Response::HTTP_NOT_FOUND);
-      }    
+      }
       $prefix = 'Bearer ';
       if (substr($auth, 0, strlen($prefix)) == $prefix) {
           $auth = substr($auth, strlen($prefix));
-      }     
+      }
       $usage_points_id_in_db = $cache->get('access_token:'.$auth);
       if(!$usage_points_id_in_db) {
         return $this->error('Unauthorized', 'Access token not found', Response::HTTP_FORBIDDEN);
@@ -557,7 +558,7 @@ class Controller extends AbstractController {
         return $this->error('Unauthorized', 'Bad access token', Response::HTTP_NOT_FOUND);
       }
     }
-    
+
     $cip = $request->getClientIp();
     # Count the number of requests per minute
     $bucket = 'ratelimit-'.floor(time()/60).'-ip-'.$cip;
@@ -583,10 +584,10 @@ class Controller extends AbstractController {
       $cg = self::refresh_client_credentials();
       if (!$cg) {
         return $this->error('Unauthorized', 'Cannot get client credentials', Response::HTTP_NOT_FOUND);
-      }      
+      }
       list($errno, $html_code, $data) = self::get_data($path, $cg, $request->query);
     }
-    
+
     if ($errno != 0) {
       return $this->error('invalid_request', 'cURL error ' . strval($errno));
     }
@@ -594,8 +595,8 @@ class Controller extends AbstractController {
       $response = new Response();
       if (array_key_exists('content-type', self::$headers)) {
         $response->headers->set('content-type', self::$headers['content-type']);
-      }      
-      $response->setContent($data);        
+      }
+      $response->setContent($data);
       return $response;
     }
   }
