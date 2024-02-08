@@ -354,6 +354,7 @@ class Controller extends AbstractController {
 
     $token_response = curl_exec($ch);
 
+    $response = new Response();
     if (array_key_exists('content-type', self::$headers)) {
       $response->headers->set('content-type', self::$headers['content-type']);
     }
