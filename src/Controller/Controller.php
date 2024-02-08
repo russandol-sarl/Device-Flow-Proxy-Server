@@ -93,17 +93,17 @@ class Controller extends AbstractController {
     $device_code = bin2hex(random_bytes(32));
     # Generate a PKCE code_verifier and store it in the cache too
     $pkce_verifier = bin2hex(random_bytes(32));
-    $cache = [
+    $cache_content = [
       'client_id' => $client_id,
       'client_secret' => $request->request->get('client_secret'),
       'scope' => $request->request->get('scope'),
       'device_code' => $device_code,
       'pkce_verifier' => $pkce_verifier,
     ];
-    $user_code = random_alpha_string(4).'-'.random_alpha_string(4);
+    $user_code = Helpers::random_alpha_string(4).'-'.Helpers::random_alpha_string(4);
 
     $cache = $this->connectCache();
-    $cache->set(str_replace('-', '', $user_code), $cache, 300); # store without the hyphen
+    $cache->set(str_replace('-', '', $user_code), $cache_content, 300); # store without the hyphen
 
     # Add a placeholder entry with the device code so that the token route knows the request is pending
     $cache->set($device_code, [
@@ -145,8 +145,8 @@ class Controller extends AbstractController {
     $user_code = strtoupper(str_replace('-', '', $user_code));
 
     $cache = $this->connectCache();
-    $cache_result = $cache->get($user_code);
-    if(!$cache_result) {
+    $cache_content = $cache->get($user_code);
+    if(!$cache_content) {
       return $this->html_error('invalid_request', 'Code non valide');
     }
 
@@ -166,21 +166,22 @@ class Controller extends AbstractController {
     // custom parameters for the auth endpoint
     $query = [
       'response_type' => 'code',
-      'client_id' => $cache->client_id,
+      'client_id' => $cache_content->client_id,
       'state' => $state,
       'duration' => $this->getParameter('app_duration'),
     ];
-    if($cache->scope) {
-      $query['scope'] = $cache->scope;
+    if($cache_content->scope) {
+      $query['scope'] = $cache_content->scope;
     }
     if($this->getParameter('app_pkce')) {
-      $pkce_challenge = base64_urlencode(hash('sha256', $cache->pkce_verifier, true));
+      $pkce_challenge = Helpers::base64_urlencode(hash('sha256', $cache_content->pkce_verifier, true));
       $query['code_challenge'] = $pkce_challenge;
       $query['code_challenge_method'] = 'S256';
     }
 
     $authURL = $this->getParameter('app_authorization_endpoint') . '?' . http_build_query($query);
 
+    $response = new Response();
     $response->setStatusCode(Response::HTTP_FOUND);
     $response->headers->set('Location', $authURL);
     return $response;
@@ -210,7 +211,7 @@ class Controller extends AbstractController {
     }
 
     # Look up the info from the user code provided in the state parameter
-    $cache_result = $cache->get($state->user_code);
+    $cache_content = $cache->get($state->user_code);
 
     $flow = $this->getParameter('app_flow');
     if (!$flow || (strtoupper($flow) != 'DEVICE')) {
@@ -231,7 +232,7 @@ class Controller extends AbstractController {
       $access_token->expires_in = self::ACCESS_EXPIRE;
       $access_token->usage_points_id = $usage_points_id;
       $access_token->scope = '';
-      $cache->set($cache_result->device_code, [
+      $cache->set($cache_content->device_code, [
         'status' => 'complete',
         'token_response' => $access_token
       ], 120);
@@ -246,7 +247,7 @@ class Controller extends AbstractController {
       $params = [
         'grant_type' => 'authorization_code',
         'code' => $request->query->get('code'),
-        'client_id' => $cache_result->client_id,
+        'client_id' => $cache_content->client_id,
       ];
       $redirect_uri = $this->getParameter('app_redirect_uri');
       if ($redirect_uri) {
@@ -256,11 +257,11 @@ class Controller extends AbstractController {
       if($client_secret) {
         $params['client_secret'] = $client_secret;
       }
-      elseif($cache_result->client_secret) {
-        $params['client_secret'] = $cache_result->client_secret;
+      elseif($cache_content->client_secret) {
+        $params['client_secret'] = $cache_content->client_secret;
       }
       if($this->getParameter('app_pkce')) {
-        $params['code_verifier'] = $cache_result->pkce_verifier;
+        $params['code_verifier'] = $cache_content->pkce_verifier;
       }
 
       $ch = curl_init();
@@ -274,7 +275,7 @@ class Controller extends AbstractController {
       if(!$access_token || !property_exists($access_token, 'access_token')) {
         # If there are any problems getting an access token, kill the request and display an error
         $cache->delete($state->user_code);
-        $cache->delete($cache_result->device_code);
+        $cache->delete($cache_content->device_code);
         return $this->html_error('Error Logging In', 'Il y a eu une erreur en essayant d\'obtenir un jeton d\'accès du service <p><pre>'.$token_response.'</pre></p>');
       }
 
@@ -291,7 +292,7 @@ class Controller extends AbstractController {
       }
 
       # Stash the access token in the cache and display a success message
-      $cache->set($cache_result->device_code, [
+      $cache->set($cache_content->device_code, [
         'status' => 'complete',
         'token_response' => $access_token
       ], 120);
