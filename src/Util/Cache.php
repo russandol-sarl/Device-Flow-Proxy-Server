@@ -74,7 +74,7 @@ class Cache {
     );
   }
 
-  public static function delete($key) {
+  public function delete($key) {
     $this->col->deleteMany([ 'key' => $key ]);
   }
 }
