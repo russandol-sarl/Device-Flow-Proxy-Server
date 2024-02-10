@@ -84,6 +84,7 @@ class GlobalTest extends WebTestCase
         $client->request('POST', '/device/token');
         //dump($client->getResponse()->getContent());
         $jsonResponseToken = json_decode($client->getResponse()->getContent(), true);
+        $this->assertResponseStatusCodeSame(Response::HTTP_BAD_REQUEST, '/device/token error code');
         $this->assertEquals($jsonResponseToken['error_description'], 'Missing client_id or grant_type', '/device/token client_id or grant_type missing');
         
         $client->request('POST', '/device/token', ['client_id' => 'test']);
@@ -133,6 +134,7 @@ class GlobalTest extends WebTestCase
         $client->request('POST', '/device/token', ['client_id' => 'test', 'grant_type' => 'urn:ietf:params:oauth:grant-type:device_code', 'device_code' => $jsonResponseCode['device_code']]);
         //dump($client->getResponse()->getContent());
         $jsonResponseToken = json_decode($client->getResponse()->getContent(), true);
+        $this->assertResponseIsSuccessful('/device/token response');
         $this->assertArrayHasKey('access_token', $jsonResponseToken, '/device/token access_token in array');
 
         $client->request('POST', '/device/token', ['client_id' => 'test', 'grant_type' => 'refresh_token', 'refresh_token' => $jsonResponseToken['refresh_token'], 'usage_points_id' => $jsonResponseToken['usage_points_id']]);
