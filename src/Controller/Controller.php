@@ -212,6 +212,9 @@ class Controller extends AbstractController {
 
     # Look up the info from the user code provided in the state parameter
     $cache_content = $cache->get($state->user_code);
+    if($cache_content == false) {
+      return $this->html_error('Invalid Request', 'user_code introuvable');
+    }
 
     $flow = $this->getParameter('app_flow');
     if (!$flow || (strtoupper($flow) != 'DEVICE')) {
@@ -376,7 +379,7 @@ class Controller extends AbstractController {
 
     $client_id = $request->request->get('client_id');
     if($client_id == null || $request->request->get('grant_type') == null) {
-      return $this->error('invalid_request', 'Missing client_id');
+      return $this->error('invalid_request', 'Missing client_id or grant_type');
     }
 
     $cache = $this->connectCache();
