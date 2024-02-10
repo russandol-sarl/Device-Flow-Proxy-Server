@@ -34,7 +34,7 @@ parameters:
     app_mongodb_port: '%env(string:MONGODB_PORT)%'
     app_mongodb_user: '%env(string:MONGODB_USER)%'
     app_mongodb_password: '%env(string:MONGODB_PASSWORD)%'
-    app_mongodb_db: '%env(string:MONGODB_DB)%'    
+    app_mongodb_db: '%env(string:MONGODB_DB)%'
     
 services:
     # default configuration for services in *this* file

@@ -161,6 +161,7 @@ class GlobalTest extends WebTestCase
         //dump($client->getResponse()->getContent());
         $jsonResponseRefreshToken = json_decode($client->getResponse()->getContent(), true);
         $this->assertArrayHasKey('access_token', $jsonResponseRefreshToken, '/device/token access_token in array for refresh');
+        $tokenUri = $client->getHistory()->current()->getUri();
 
         $client->request('GET', '/data/proxy/metering_data_clc/v5/consumption_load_curve');
         //dump($client->getResponse()->getContent());        
@@ -199,6 +200,8 @@ class GlobalTest extends WebTestCase
         
         $_ENV['FLOW'] = 'DEVICE';
         
+        $_ENV['TOKEN_ENDPOINT'] = 'https://gw.hml.api.enedis.fr/v1/oauth2/token';
+        
         $client->request('POST', '/device/code', [ 'client_id' => 'test' ]);
         $jsonResponseCode = json_decode($client->getResponse()->getContent(), true);
         //dump($jsonResponseCode);
@@ -211,6 +214,29 @@ class GlobalTest extends WebTestCase
         $client->request('GET', '/auth/redirect', ['code' => $jsonResponseCode['user_code'], 'state' => $redirect_params['state'], 'usage_point_id' => '123456789']);
         //dump($client->getResponse()->getContent());
         $this->assertSelectorTextContains('p', 'Il y a eu une erreur', '/auth/redirect invalid access_token (FLOW==DEVICE)');
+
+        $_ENV['TOKEN_ENDPOINT'] = 'http://opensrcdev.alwaysdata.net/domoticzlinkyconnect/device/token';
+        print($_ENV['TOKEN_ENDPOINT'] . " must be in debug mode for tests to work");
+        //print($tokenUri);
+        
+        $client->request('POST', '/device/code', [ 'client_id' => $client_id ]);
+        $jsonResponseCode = json_decode($client->getResponse()->getContent(), true);
+        //dump($jsonResponseCode);
+        $client->request('GET', '/auth/verify_code', ['code' => $jsonResponseCode['user_code'] ]);
+        $location = $client->getResponse()->headers->get('location');
+        $url_parts = parse_url($location);
+        $query = $url_parts['query'];
+        parse_str($query, $redirect_params);
+
+        $client->request('GET', '/auth/redirect', ['code' => $jsonResponseCode['user_code'], 'state' => $redirect_params['state'], 'usage_point_id' => '123456789']);
+        //dump($client->getResponse()->getContent());
+        $this->assertResponseIsSuccessful('/auth/redirect response (FLOW==DEVICE)');
+        $this->assertAnySelectorTextContains('h2', 'Le consentement a bien été obtenu', '/auth/redirect response text (FLOW==DEVICE)');
+
+        $client->request('POST', '/device/proxy', ['client_id' => $client_id, 'grant_type' => 'authorization_code']);
+        $jsonResponseToken = json_decode($client->getResponse()->getContent(), true);
+        $this->assertResponseIsSuccessful('/device/proxy response');
+        $this->assertEquals($jsonResponseToken['access_token'], 'testaccess', '/device/proxy access_token ok');
     }
 }
 ?>

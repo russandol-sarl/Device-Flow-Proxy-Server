@@ -269,10 +269,12 @@ class Controller extends AbstractController {
 
       $ch = curl_init();
       curl_setopt($ch, CURLOPT_URL, $this->getParameter('app_token_endpoint'));
+      //var_dump($this->getParameter('app_token_endpoint'));
       curl_setopt($ch, CURLOPT_POST, true);
       curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($params));
       curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
       $token_response = curl_exec($ch);
+      //var_dump($token_response);
       $access_token = json_decode($token_response);
 
       if(!$access_token || !property_exists($access_token, 'access_token')) {
@@ -378,14 +380,15 @@ class Controller extends AbstractController {
     }
 
     $client_id = $request->request->get('client_id');
-    if($client_id == null || $request->request->get('grant_type') == null) {
+    $grant_type = $request->request->get('grant_type');
+    if(($client_id == null) || ($grant_type == null)) {
       return $this->error('invalid_request', 'Missing client_id or grant_type');
     }
 
     $cache = $this->connectCache();
 
     # This server supports the device_code response type
-    if($request->request->get('grant_type') == 'urn:ietf:params:oauth:grant-type:device_code') {
+    if($grant_type == 'urn:ietf:params:oauth:grant-type:device_code') {
       if($request->request->get('device_code') == null) {
         return $this->error('invalid_request', 'Missing device_code');
       }
@@ -425,7 +428,7 @@ class Controller extends AbstractController {
     }
     // To test:
     // curl -X POST url/device/token -H 'Content-Type: application/x-www-form-urlencoded' -d 'grant_type=refresh_token&client_id=xxxx'
-    elseif($request->request->get('grant_type') == 'refresh_token') {
+    elseif($grant_type == 'refresh_token') {
       if($client_id != $this->getParameter('app_client_id')) {
         return $this->error('invalid_request', 'Bad client_id');
       }
@@ -472,6 +475,35 @@ class Controller extends AbstractController {
       $access_token->scope = '';
       $response = new JsonResponse($access_token);
       return $response;
+    }
+    // only for test purpose
+    elseif($grant_type == 'authorization_code') {
+      //print('authorization_code');
+      if ($this->getParameter('kernel.debug')) {        
+        $envId = $this->getParameter('app_client_id');
+        $envSecret = $this->getParameter('app_client_secret') ;
+        $client_secret = $request->request->get('client_secret');
+        if($client_secret == null) {
+          return $this->error('invalid_request', 'Missing client_secret');
+        }
+        if($client_id != $envId) {
+          return $this->error('invalid_request', 'Invalid client_id');
+        }
+        if($client_secret != $envSecret) {
+          return $this->error('invalid_request', 'Invalid client_secret');
+        }
+        $access_token = new \stdClass();
+        $access_token->access_token = 'testaccess';
+        $access_token->refresh_token = 'testrefresh';
+        $access_token->token_type = 'Bearer';
+        $access_token->expires_in = self::ACCESS_EXPIRE;
+        $access_token->usage_points_id = 'testusage';
+        $access_token->scope = '';
+        return $this->success($access_token);
+      }
+      else {
+          return $this->error('unsupported_grant_type', 'authorization_code grant type forbidden in prod environment');
+      }
     }
     else {
       return $this->error('unsupported_grant_type', 'Only \'urn:ietf:params:oauth:grant-type:device_code\' and refresh_token are supported.');
