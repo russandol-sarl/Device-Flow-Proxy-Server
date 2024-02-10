@@ -340,10 +340,10 @@ class Controller extends AbstractController {
         $query = [
           'redirect_uri' => $redirect_uri,
         ];
-        $tokenURL = '%env(TOKEN_ENDPOINT)%?' . http_build_query($query);
+        $tokenURL = $this->getParameter('app_token_endpoint') . '?' . http_build_query($query);
     }
     else {
-        $tokenURL = env('TOKEN_ENDPOINT');
+        $tokenURL = $this->getParameter('app_token_endpoint');
     }
 
     self::resetHeaders();
