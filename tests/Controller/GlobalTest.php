@@ -161,7 +161,6 @@ class GlobalTest extends WebTestCase
         //dump($client->getResponse()->getContent());
         $jsonResponseRefreshToken = json_decode($client->getResponse()->getContent(), true);
         $this->assertArrayHasKey('access_token', $jsonResponseRefreshToken, '/device/token access_token in array for refresh');
-        $tokenUri = $client->getHistory()->current()->getUri();
 
         $client->request('GET', '/data/proxy/metering_data_clc/v5/consumption_load_curve');
         //dump($client->getResponse()->getContent());        
@@ -217,7 +216,6 @@ class GlobalTest extends WebTestCase
 
         $_ENV['TOKEN_ENDPOINT'] = 'http://opensrcdev.alwaysdata.net/domoticzlinkyconnect/device/token';
         print($_ENV['TOKEN_ENDPOINT'] . " must be in debug mode for tests to work");
-        //print($tokenUri);
         
         $client->request('POST', '/device/code', [ 'client_id' => $client_id ]);
         $jsonResponseCode = json_decode($client->getResponse()->getContent(), true);
