@@ -222,6 +222,7 @@ class Controller extends AbstractController {
       if($usage_points_id == false) {
         return $this->html_error('Invalid Request', 'Le paramètre usage_point_id manque dans la requête');
       }
+      $usage_points_id = str_replace(';', ',', $usage_points_id);
       $access_token = new \stdClass();
       do {
         $access_token->access_token = bin2hex(random_bytes(32));
