@@ -5,10 +5,6 @@
 # to each configured DirectoryIndex file (e.g. index.php, index.html, index.pl).
 DirectoryIndex index.php
 
-# Do NOT use ; as separator because Enedis might send usage point list separate
-# with semicolon in one argument
-php_value arg_separator.input &
-
 # By default, Apache does not evaluate symbolic links if you did not enable this
 # feature in your server configuration. Uncomment the following line if you
 # install assets as symlinks or if you experience problems related to symlinks
