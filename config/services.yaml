@@ -35,7 +35,10 @@ parameters:
     app_mongodb_user: '%env(string:MONGODB_USER)%'
     app_mongodb_password: '%env(string:MONGODB_PASSWORD)%'
     app_mongodb_db: '%env(string:MONGODB_DB)%'
-    
+
+    router.request_context.scheme: 'https'
+    asset.request_context.secure: true
+
 services:
     # default configuration for services in *this* file
     _defaults:
