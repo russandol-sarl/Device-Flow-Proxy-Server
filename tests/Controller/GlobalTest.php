@@ -172,7 +172,7 @@ class GlobalTest extends WebTestCase
         $client->request('GET', '/data/proxy/metering_data_clc/v5/consumption_load_curve', ['usage_point_id' => $jsonResponseToken['usage_points_id'], 'start' => '2024-01-19', 'end' => '2024-01-26']);
         //dump($client->getResponse()->getContent());        
         $jsonResponseData = json_decode($client->getResponse()->getContent(), true);
-        $this->assertArrayHasKey('meter_reading', $jsonResponseData, '/data/proxy meter_reading');
+        $this->assertArrayHasKey('meter_reading', $jsonResponseData, '/data/proxy meter_reading for consumption without auth');
 
         unset($_ENV['DISABLE_DATA_ENPOINT_AUTH']);
 
@@ -195,7 +195,7 @@ class GlobalTest extends WebTestCase
         );
         //dump($client->getResponse()->getContent());        
         $jsonResponseData = json_decode($client->getResponse()->getContent(), true);
-        $this->assertArrayHasKey('meter_reading', $jsonResponseData, '/data/proxy meter_reading');
+        $this->assertArrayHasKey('meter_reading', $jsonResponseData, '/data/proxy meter_reading with auth');
         
         $_ENV['FLOW'] = 'DEVICE';
         
