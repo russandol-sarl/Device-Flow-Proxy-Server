@@ -15,6 +15,8 @@ parameters:
     env(FLOW): ''
     env(DURATION): 'P3Y'
     env(MONGODB_PORT): '27017'
+
+    env(TRUSTED_PROXIES): ''
     
     app_base_url: '%env(string:BASE_URL)%'
     app_limit_requests_per_minute : '%env(int:LIMIT_REQUESTS_PER_MINUTE)%'
