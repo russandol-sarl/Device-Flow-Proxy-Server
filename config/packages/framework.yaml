@@ -9,6 +9,9 @@ framework:
     #esi: true
     #fragments: true
 
+    trusted_headers: '%env(csv:TRUSTED_HEADERS)%'
+    trusted_proxies: '%env(TRUSTED_PROXIES)%'
+
 when@test:
     framework:
         test: true
