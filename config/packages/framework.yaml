@@ -9,7 +9,7 @@ framework:
     #esi: true
     #fragments: true
 
-    trusted_headers: '%env(csv:TRUSTED_HEADERS)%'
+    trusted_headers: ['x-forwarded-for', 'x-forwarded-host', 'x-forwarded-proto', 'x-forwarded-port', 'x-forwarded-prefix']
     trusted_proxies: '%env(TRUSTED_PROXIES)%'
 
 when@test:
