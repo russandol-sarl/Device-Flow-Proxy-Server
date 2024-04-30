@@ -33,7 +33,8 @@ class GlobalTest extends WebTestCase
         $client_id = $client->getKernel()->getContainer()->getParameter('app_client_id');
         $usage_point_id = '42900589957123';
         $_ENV['VERSION_MIN'] = '';
-        $_ENV['DATA_ENDPOINT'] = 'https://ext.hml.api.enedis.fr';
+        $_ENV['TOKEN_ENDPOINT_V3'] = 'https://ext.prod-sandbox.api.enedis.fr/oauth2/v3/token';
+        $_ENV['DATA_ENDPOINT'] = 'https://ext.prod-sandbox.api.enedis.fr';
         
         $client->request('GET', '/auth/verify_code');
         $this->assertResponseIsSuccessful('/auth/verify_code response');
