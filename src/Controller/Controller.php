@@ -618,7 +618,7 @@ class Controller extends AbstractController {
       }
     }
     list($errno, $html_code, $data) = self::get_data($path, $cg, $request->query);
-    if ($html_code == 403) {
+    if ($html_code == Response::HTTP_FORBIDDEN) {
       $cg = self::refresh_client_credentials();
       if (!$cg) {
         return $this->error('Unauthorized', 'Cannot get client credentials', Response::HTTP_NOT_FOUND);
@@ -631,6 +631,7 @@ class Controller extends AbstractController {
     }
     else {
       $response = new Response();
+      $response->setStatusCode($html_code);
       if (array_key_exists('content-type', self::$headers)) {
         $response->headers->set('content-type', self::$headers['content-type']);
       }
