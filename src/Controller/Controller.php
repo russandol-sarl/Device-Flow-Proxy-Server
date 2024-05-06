@@ -635,6 +635,7 @@ class Controller extends AbstractController {
       if (array_key_exists('content-type', self::$headers)) {
         $response->headers->set('content-type', self::$headers['content-type']);
       }
+      $response->headers->set('via', $request->getHttpHost());
       $response->setContent($data);
       return $response;
     }
