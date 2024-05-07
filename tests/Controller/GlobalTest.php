@@ -90,21 +90,29 @@ class GlobalTest extends WebTestCase
         
         $client->request('POST', '/device/token', ['client_id' => 'test']);
         $jsonResponseToken = json_decode($client->getResponse()->getContent(), true);
+        $this->assertEquals($jsonResponseToken['error_description'], 'Missing client_id or grant_type', '/device/token grant_type missing');
+        
+        $client->request('POST', '/device/token', ['grant_type' => 'urn:ietf:params:oauth:grant-type:device_code']);
+        $jsonResponseToken = json_decode($client->getResponse()->getContent(), true);
         $this->assertEquals($jsonResponseToken['error_description'], 'Missing client_id or grant_type', '/device/token client_id missing');
         
         $client->request('POST', '/device/token', ['client_id' => 'test', 'grant_type' => 'urn:ietf:params:oauth:grant-type:device_code']);
         $jsonResponseToken = json_decode($client->getResponse()->getContent(), true);
+        $this->assertEquals($jsonResponseToken['error_description'], 'Bad client_id', '/device/token bad client_id');
+
+        $client->request('POST', '/device/token', ['client_id' => $client_id, 'grant_type' => 'urn:ietf:params:oauth:grant-type:device_code']);
+        $jsonResponseToken = json_decode($client->getResponse()->getContent(), true);
         $this->assertEquals($jsonResponseToken['error_description'], 'Missing device_code', '/device/token device_code missing');
         
-        $client->request('POST', '/device/token', ['client_id' => 'test', 'grant_type' => 'test']);
+        $client->request('POST', '/device/token', ['client_id' => $client_id, 'grant_type' => 'test']);
         $jsonResponseToken = json_decode($client->getResponse()->getContent(), true);
         $this->assertEquals($jsonResponseToken['error'], 'unsupported_grant_type', '/device/token unsupported_grant_type');
         
-        $client->request('POST', '/device/token', ['client_id' => 'test', 'grant_type' => 'urn:ietf:params:oauth:grant-type:device_code', 'device_code' => '1234']);
+        $client->request('POST', '/device/token', ['client_id' => $client_id, 'grant_type' => 'urn:ietf:params:oauth:grant-type:device_code', 'device_code' => '1234']);
         $jsonResponseToken = json_decode($client->getResponse()->getContent(), true);
         $this->assertEquals($jsonResponseToken['error_description'], 'device_code not found in db', '/device/token device_code not found in db');
         
-        $client->request('POST', '/device/token', ['client_id' => 'test', 'grant_type' => 'urn:ietf:params:oauth:grant-type:device_code', 'device_code' => $jsonResponseCode['device_code']]);
+        $client->request('POST', '/device/token', ['client_id' => $client_id, 'grant_type' => 'urn:ietf:params:oauth:grant-type:device_code', 'device_code' => $jsonResponseCode['device_code']]);
         //dump($client->getResponse()->getContent());
         $jsonResponseToken = json_decode($client->getResponse()->getContent(), true);
         $this->assertArrayHasKey('error', $jsonResponseToken, '/device/token error in array');
@@ -132,7 +140,7 @@ class GlobalTest extends WebTestCase
         //dump($client->getResponse()->getContent());
         $this->assertAnySelectorTextContains('h2', 'Le consentement a bien été obtenu pour le plugin DomoticzLinky ! Vous pouvez fermer cette page et retourner sur Domoticz.', '/auth/redirect signed in (FLOW!=DEVICE)');
 
-        $client->request('POST', '/device/token', ['client_id' => 'test', 'grant_type' => 'urn:ietf:params:oauth:grant-type:device_code', 'device_code' => $jsonResponseCode['device_code']]);
+        $client->request('POST', '/device/token', ['client_id' => $client_id, 'grant_type' => 'urn:ietf:params:oauth:grant-type:device_code', 'device_code' => $jsonResponseCode['device_code']]);
         //dump($client->getResponse()->getContent());
         $jsonResponseToken = json_decode($client->getResponse()->getContent(), true);
         $this->assertResponseIsSuccessful('/device/token response');
