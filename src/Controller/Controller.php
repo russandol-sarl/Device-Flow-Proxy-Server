@@ -386,6 +386,10 @@ class Controller extends AbstractController {
       return $this->error('invalid_request', 'Missing client_id or grant_type');
     }
 
+    if($client_id != $this->getParameter('app_client_id')) {
+      return $this->error('invalid_request', 'Bad client_id');
+    }
+    
     $cache = $this->connectCache();
 
     # This server supports the device_code response type
@@ -430,9 +434,6 @@ class Controller extends AbstractController {
     // To test:
     // curl -X POST url/device/token -H 'Content-Type: application/x-www-form-urlencoded' -d 'grant_type=refresh_token&client_id=xxxx'
     elseif($grant_type == 'refresh_token') {
-      if($client_id != $this->getParameter('app_client_id')) {
-        return $this->error('invalid_request', 'Bad client_id');
-      }
       $usage_points_id = $request->request->get('usage_points_id');
       if($usage_points_id == null) {
         return $this->error('invalid_request', 'Missing usage_points_id');
@@ -481,16 +482,11 @@ class Controller extends AbstractController {
     elseif($grant_type == 'authorization_code') {
       //print('authorization_code');
       if ($this->getParameter('kernel.debug')) {        
-        $envId = $this->getParameter('app_client_id');
-        $envSecret = $this->getParameter('app_client_secret') ;
         $client_secret = $request->request->get('client_secret');
         if($client_secret == null) {
           return $this->error('invalid_request', 'Missing client_secret');
         }
-        if($client_id != $envId) {
-          return $this->error('invalid_request', 'Invalid client_id');
-        }
-        if($client_secret != $envSecret) {
+        if($request->request->get('client_secret') != $this->getParameter('app_client_secret')) {
           return $this->error('invalid_request', 'Invalid client_secret');
         }
         $access_token = new \stdClass();
