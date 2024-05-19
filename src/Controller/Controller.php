@@ -274,6 +274,9 @@ class Controller extends AbstractController {
       curl_setopt($ch, CURLOPT_POST, true);
       curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($params));
       curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+      if ($this->getParameter('kernel.debug')) {        
+        curl_setopt($ch, CURLOPT_VERBOSE, true);
+      }
       $token_response = curl_exec($ch);
       //var_dump($token_response);
       $access_token = json_decode($token_response);
@@ -356,6 +359,9 @@ class Controller extends AbstractController {
     curl_setopt($ch, CURLOPT_POST, true);
     curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($params));
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    if ($this->getParameter('kernel.debug')) {        
+      curl_setopt($ch, CURLOPT_VERBOSE, true);
+    }
     // this function is called by curl for each header received
     curl_setopt($ch, CURLOPT_HEADERFUNCTION, '\App\Controller\Controller::setHeader');
 
@@ -523,6 +529,9 @@ class Controller extends AbstractController {
     curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($params));
     curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    if ($this->getParameter('kernel.debug')) {        
+      curl_setopt($ch, CURLOPT_VERBOSE, true);
+    }
     curl_setopt($ch, CURLOPT_HTTPHEADER, array('Accept: application/json', 'Content-Type: application/x-www-form-urlencoded'));
     $token_response = curl_exec($ch);
     $access_token = json_decode($token_response);
@@ -549,6 +558,9 @@ class Controller extends AbstractController {
     curl_setopt($ch, CURLOPT_URL, $this->getParameter('app_data_endpoint') . '/' . $path. '?' . $query2);
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
     curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+    if ($this->getParameter('kernel.debug')) {        
+      curl_setopt($ch, CURLOPT_VERBOSE, true);
+    }
     curl_setopt($ch, CURLOPT_HEADERFUNCTION, '\App\Controller\Controller::setHeader');
     curl_setopt($ch, CURLOPT_HTTPHEADER, array('Authorization: ' . $cg->token_type . ' '. $cg->access_token, 'Accept: application/json', 'Content-Type: application/x-www-form-urlencoded'));
     $data = curl_exec($ch);
