@@ -550,7 +550,7 @@ class Controller extends AbstractController {
 
   # get json data with cURL
   private function get_data($path, $cg, $query){
-    $query2 = http_build_query($query->all());
+    $query2 = http_build_query(array_filter($query->all()));
 
     self::resetHeaders();
 
