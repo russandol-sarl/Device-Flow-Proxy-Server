@@ -9,6 +9,7 @@ use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\Routing\Annotation\Route;
 use App\Util\Helpers;
 use App\Util\Cache;
+use App\Util\CachePG;
 
 class Controller extends AbstractController {
   const MSG_VER_ERROR = 'version_mismatch';
@@ -68,7 +69,12 @@ class Controller extends AbstractController {
   }
 
   private function connectCache() {
-    return new Cache($this->getParameter('app_mongodb_db'), $this->getParameter('app_mongodb_user'), $this->getParameter('app_mongodb_password'), $this->getParameter('app_mongodb_address'), $this->getParameter('app_mongodb_port'));
+    if ($this->getParameter('app_db_type') == "mongodb") {
+      return new Cache($this->getParameter('app_db_name'), $this->getParameter('app_db_user'), $this->getParameter('app_db_password'), $this->getParameter('app_db_address'), $this->getParameter('app_db_port'));
+    }
+    else {
+      return new CachePG($this->getParameter('app_db_name'), $this->getParameter('app_db_user'), $this->getParameter('app_db_password'), $this->getParameter('app_db_address'), $this->getParameter('app_db_port'));
+    }
   }
 
   # A device submits a request here (POST) to generate a new device and user code

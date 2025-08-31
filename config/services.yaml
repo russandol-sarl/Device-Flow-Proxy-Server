@@ -13,6 +13,7 @@ parameters:
     env(DISABLE_DATA_ENPOINT_AUTH): ''    
     env(PKCE): ''
     env(FLOW): ''
+    env(DB_TYPE): ''
     env(DURATION): 'P3Y'
     env(MONGODB_PORT): '27017'
 
@@ -32,11 +33,12 @@ parameters:
     app_client_id: '%env(string:CLIENT_ID)%'
     app_client_secret: '%env(string:CLIENT_SECRET)%'
     app_duration: '%env(string:DURATION)%'
-    app_mongodb_address: '%env(string:MONGODB_ADDRESS)%'
-    app_mongodb_port: '%env(string:MONGODB_PORT)%'
-    app_mongodb_user: '%env(string:MONGODB_USER)%'
-    app_mongodb_password: '%env(string:MONGODB_PASSWORD)%'
-    app_mongodb_db: '%env(string:MONGODB_DB)%'
+    app_db_address: '%env(string:DB_ADDRESS)%'
+    app_db_port: '%env(string:DB_PORT)%'
+    app_db_user: '%env(string:DB_USER)%'
+    app_db_password: '%env(string:DB_PASSWORD)%'
+    app_db_name: '%env(string:DB_NAME)%'
+    app_db_type: '%env(string:DB_TYPE)%'
 
 #    router.request_context.scheme: 'https'
 #    asset.request_context.secure: true
