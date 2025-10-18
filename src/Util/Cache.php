@@ -27,7 +27,7 @@ class Cache {
   }
 
   public function convertToExpireAt($exp) {
-    return new \MongoDB\BSON\UTCDateTime(round(microtime(true) * 1000) + ($exp * 1000));
+    return new \MongoDB\BSON\UTCDateTime((int)round(microtime(true) * 1000) + ($exp * 1000));
   }
   
   public function set($key, $value, $exp=600) {
